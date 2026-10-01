@@ -31,4 +31,6 @@ Hallazgos de la Fase 0 (`docs/00-benchmark.md`):
   - los pilotos de la Fase 1 dependen de un tercero y no son white-label;
   - habrá que migrar las configuraciones de los pilotos a la plataforma propia;
   - la Fase 2 requiere 4–8 semanas de desarrollo.
+- **Actualización 2026-10-01:** con 6 h/semana de dedicación, el MVP propio (~55–70 h con Claude Code) llevaría **9–12 semanas**. Eso refuerza validar primero sin código.
+  - Requisito duro de la plataforma de la Fase 1: **permitir BYOK con Gemini**, porque el fundador reside en VE y no puede usar las claves de Anthropic ni OpenAI. Si Convocore no lo permite, probar otra plataforma que sí lo haga antes de pasar al plan B.
 - **Plan B:** si Convocore no admite Gemini con BYOK o no factura WhatsApp correctamente ⚠️, hacer un piloto "C-cero" con un solo cliente: script mínimo Meta Cloud API → LLM → Google Calendar.

@@ -29,20 +29,26 @@ Agentes de IA para **clínicas, consultorios médicos y odontológicos, centros 
 | [0001](docs/decisiones/0001-ruta-inicial.md) | Ruta A → C: validar revendiendo (Convocore, plan barato) y construir un MVP propio mínimo. B solo para componentes con licencia permisiva | Propuesta |
 | [0002](docs/decisiones/0002-typescript-monorepo.md) | TypeScript de punta a punta, monorepo pnpm + Turborepo, adaptadores por canal y por LLM | Aceptada |
 | [0003](docs/decisiones/0003-whatsapp-api-oficial.md) | Solo la WhatsApp Cloud API oficial de Meta. Nada de Evolution API/Baileys en producción | Aceptada |
-| [0004](docs/decisiones/0004-entidad-legal.md) | Dónde registrar el negocio | **Propuesta: pendiente del usuario** |
+| [0004](docs/decisiones/0004-entidad-legal.md) | Fase 1 como persona natural en Venezuela; entidad fuera de VE al llegar a ≥3 clientes pagando fuera de VE | Aceptada para la Fase 1 |
 
 **Respuestas del usuario (Fase 0):**
 - **A quién vender:** a clínicas directamente primero; agencias (white-label) a partir de la Fase 3.
-- **País de registro:** sin definir (Venezuela como punto de partida).
 - **Agendas de los clientes:** Google Calendar y papel/WhatsApp manual. Prioridad: Google Calendar API más una agenda propia simple.
 
-## Mercados (orden recomendado)
+**Respuestas del usuario (cierre de la Fase 0, 2026-10-01):**
+- **Residencia:** Venezuela. En la Fase 1 opera como persona natural (ADR 0004).
+- **Tarjeta internacional:** sí. Cubre Meta, Gemini, Convocore y Hetzner.
+- **Pilotos:** hay médicos interesados esperando.
+- **Modelos:** acepta Gemini o cualquier modelo que sostenga una atención de calidad.
+- **Dedicación:** 6 horas por semana. Por eso la Fase 1 debe ser sin código y la Fase 2 se estima en 9–12 semanas.
+
+## Mercados (orden de ejecución)
 
 | Orden | País | Motivo |
 |---|---|---|
-| 1 | Colombia | WhatsApp a USD 0,0008 por mensaje, todos los proveedores disponibles, margen >90 % |
-| 2 | Venezuela | Pilotos en paralelo. Sin Anthropic/OpenAI, se usa Gemini |
-| 3 | España | Mayor precio, más cumplimiento normativo |
+| 1 | Venezuela | El fundador reside allí y hay médicos esperando para pilotos. Cobro directo en USD, Pago Móvil o USDT. Modelos: Gemini |
+| 2 | Colombia | El mejor mercado por economía (WhatsApp a USD 0,0008, margen >90 %), pero cobrar con Wompi o Mercado Pago exige RUT o entidad colombiana (ADR 0004) |
+| 3 | España | Mayor precio, más cumplimiento normativo. Requiere entidad fuera de VE |
 | 4 | Argentina | WhatsApp a USD 0,026, comisiones de ~6 % e inflación |
 
 Detalle en `docs/00-mercados.md`.
@@ -53,7 +59,7 @@ Detalle en `docs/00-mercados.md`.
 |---|---|---|
 | Panel | Next.js (App Router) + TypeScript + Tailwind + shadcn/ui | Autohospedado con **Coolify** en Hetzner. **Vercel Hobby no permite uso comercial** |
 | Widget | Web Component o Preact + Vite | Bundle pequeño |
-| IA | Vercel AI SDK (Apache 2.0) detrás de una interfaz `LlmProvider` propia | **Ruteo por país:** VE → Gemini; CO, AR y ES → GPT-5 mini o Gemini por defecto, escalado a Claude Sonnet 5.5 por regla |
+| IA | Vercel AI SDK (Apache 2.0) detrás de una interfaz `LlmProvider` propia | **Mientras el fundador resida en VE, todo el tráfico va a Gemini:** 2.5 Flash-Lite por defecto y 3.x Flash como escalado. Anthropic y OpenAI no abren cuentas de API a residentes en VE. Se reevalúa con una entidad fuera de VE (ADR 0004) |
 | Datos | Postgres + pgvector en el VPS, Drizzle ORM | Supabase Free solo para prototipos: se pausa tras 7 días sin actividad |
 | Canales | WhatsApp Cloud API (Meta) → widget web → Instagram, Messenger y Telegram (Fase 3) | — |
 | Agenda | Google Calendar API (gratuita) + agenda propia simple | Cal.com es AGPL: evitarlo salvo que se autohospede sin modificar |

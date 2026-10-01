@@ -4,6 +4,12 @@
 > Antes de vender en cada país, valida con un abogado local los puntos marcados con ⚖️ y con la fuente oficial los marcados con ⚠️.
 > El método y las limitaciones de las fuentes están en `docs/00-benchmark.md` ("Cómo se verificó").
 
+## Actualización con las respuestas del usuario (2026-10-01)
+
+- **Datos del fundador:** reside en Venezuela, tiene tarjeta internacional, hay médicos esperando para pilotos y dedica 6 h/semana.
+- **Orden de ejecución:** **Venezuela (pilotos ya) → Colombia (cuando haya RUT o entidad) → España → Argentina**. Colombia sigue siendo el mejor mercado por economía, pero cobrar allí con pasarelas locales exige presencia legal colombiana (§5).
+- **Modelos:** todo el tráfico va a Gemini mientras el fundador resida en VE.
+
 ## Supuestos comunes
 
 - **Clínica tipo:** 300 conversaciones al mes.

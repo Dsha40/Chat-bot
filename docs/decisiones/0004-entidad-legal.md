@@ -1,6 +1,6 @@
 # ADR 0004 — Dónde registrar el negocio
 
-- **Estado:** **Propuesta: pendiente de decisión del usuario**
+- **Estado:** Aceptada para la Fase 1 (actualizada el 2026-10-01 con las respuestas del usuario)
 - **Fecha:** 2026-10-01
 
 ## Contexto
@@ -28,9 +28,12 @@ El país de registro y el de residencia determinan qué proveedores y pasarelas 
 3. Si no, **LLC en Wyoming**, resolviendo antes la banca.
 4. En ningún caso falsear la residencia ni usar VPN para acceder a proveedores.
 
-## Pendiente
+## Decisión (2026-10-01)
 
-Que el usuario confirme:
-- el país de residencia;
-- si dispone de una tarjeta internacional;
-- si puede tener representación en Colombia o España.
+Respuestas del usuario: reside en Venezuela, tiene tarjeta internacional y no se indicó representación en Colombia ni en España.
+
+1. **Fase 1:** operar como **persona natural en Venezuela**.
+   - Cobro a clínicas venezolanas en USD (transferencia o efectivo), Pago Móvil a tasa BCV o USDT, con registro de cada operación.
+   - Proveedores pagados con la tarjeta internacional: Meta, Gemini, Convocore y Hetzner.
+2. **Modelos:** solo proveedores que admiten Venezuela (Gemini). No se abren cuentas de Anthropic ni OpenAI para el negocio mientras resida en VE, porque sus políticas de regiones lo impiden.
+3. **Disparador para revisar esta decisión:** ≥3 clientes pagando fuera de VE, o cuando haga falta cobrar con Wompi, Mercado Pago o Stripe. Entonces se evalúa una SAS en Colombia (si hay representante) o una LLC en EE.UU. (si hay banca viable).
