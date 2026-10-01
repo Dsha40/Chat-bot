@@ -34,8 +34,24 @@ const schema = z.object({
 
 export type Env = z.infer<typeof schema>;
 
+/**
+ * Forgives common copy/paste mistakes in .env: a repeated name ("LLM_MODEL=LLM_MODEL=x"),
+ * surrounding quotes or spaces, and a "models/" prefix on model ids.
+ */
+function clean(source: NodeJS.ProcessEnv): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [key, raw] of Object.entries(source)) {
+    let v = raw?.trim();
+    while (v?.startsWith(`${key}=`)) v = v.slice(key.length + 1).trim();
+    if (v && /^(["']).*\1$/.test(v)) v = v.slice(1, -1).trim();
+    if (v && key.startsWith('LLM_') && v.startsWith('models/')) v = v.slice('models/'.length);
+    out[key] = v === '' ? undefined : v;
+  }
+  return out;
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = schema.safeParse(source);
+  const parsed = schema.safeParse(clean(source));
   if (!parsed.success) {
     throw new Error(`Invalid environment variables:\n${z.prettifyError(parsed.error)}`);
   }
