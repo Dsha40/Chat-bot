@@ -14,19 +14,20 @@ Agentes de IA para **clínicas, consultorios médicos y odontológicos, centros 
 
 ## Estado actual (2026-10-01)
 
-- [x] **Fase 0 — Investigación y benchmark:** `docs/00-benchmark.md` y `docs/00-mercados.md`. **Pendiente: aprobación del usuario.**
-- [ ] Fase 1 — Validación con 1–3 pilotos, sin código propio (ruta A → ver ADR 0001).
-- [ ] Fase 2 — MVP propio mínimo (ruta C), solo si la Fase 1 lo justifica.
+- [x] **Fase 0 — Investigación y benchmark:** `docs/00-benchmark.md` y `docs/00-mercados.md`. Cerrada.
+- [x] **MVP propio (ruta C directa, por decisión del usuario):** bot de WhatsApp + chat web, Gemini, agenda interna o Google Calendar, recordatorios, guardarraíles y 39 pruebas. Ver `README.md`.
+- [ ] Probar con credenciales reales (Gemini, Meta, Google Calendar) y con los médicos piloto.
+- [ ] Panel web para editar `config/clinica.json`, ver conversaciones y reanudar el bot.
 - [ ] Fase 3 — Multi-tenant, más canales, white-label para agencias y facturación.
 - [ ] Fase 4 — Voz, orquestación, evaluaciones y ruteo avanzado de modelos.
 
-**No escribir código de aplicación hasta que el usuario apruebe el resultado de la Fase 0.**
+**Preferencia del usuario (2026-10-01):** ejecución directa y sin rodeos. Lo legal y lo comercial son contexto a tener en cuenta, no algo a profundizar. Pedir aprobación solo para decisiones caras o irreversibles.
 
 ## Decisiones tomadas
 
 | ADR | Decisión | Estado |
 |---|---|---|
-| [0001](docs/decisiones/0001-ruta-inicial.md) | Ruta A → C: validar revendiendo (Convocore, plan barato) y construir un MVP propio mínimo. B solo para componentes con licencia permisiva | Propuesta |
+| [0001](docs/decisiones/0001-ruta-inicial.md) | Construir directamente el MVP propio (C), sin la etapa de reventa. B solo para componentes con licencia permisiva | Aceptada |
 | [0002](docs/decisiones/0002-typescript-monorepo.md) | TypeScript de punta a punta, monorepo pnpm + Turborepo, adaptadores por canal y por LLM | Aceptada |
 | [0003](docs/decisiones/0003-whatsapp-api-oficial.md) | Solo la WhatsApp Cloud API oficial de Meta. Nada de Evolution API/Baileys en producción | Aceptada |
 | [0004](docs/decisiones/0004-entidad-legal.md) | Fase 1 como persona natural en Venezuela; entidad fuera de VE al llegar a ≥3 clientes pagando fuera de VE | Aceptada para la Fase 1 |
@@ -83,7 +84,8 @@ Detalle en `docs/00-mercados.md`.
 ## Convenciones
 
 - **Idioma:** documentación y textos de producto en español. Código, identificadores y commits en inglés.
-- **Estructura objetivo (Fase 2+):** `apps/{web,widget,api}`, `packages/{core,channels,db,ui}`, `docs/decisiones`, `evals/`.
+- **Estructura actual:** un solo paquete (`src/{agent,calendar,channels,config,llm,store,cli}`), con adaptadores separados por canal, LLM y calendario. Pasar a monorepo (`apps/`, `packages/`) solo cuando haya panel y widget.
+- **Datos:** SQLite (`node:sqlite`) en `data/chatbot.db`. Postgres solo cuando haya multi-tenant.
 - **Costos desde el día 1:** cada llamada al LLM registra modelo, tokens de entrada, salida y caché y costo en USD por conversación y por clínica.
 - **Límites por plan:** conversaciones, agentes y documentos, con alertas de consumo. WhatsApp se factura incluido (Esencial) o al costo (Profesional).
 - **Diseño de conversación:** ≤4 respuestas del bot por conversación típica. Cada mensaje de servicio por encima de 1.000/mes cuesta entre USD 0,0008 y 0,026 según el país.

@@ -1,0 +1,36 @@
+{
+  "id": "consultorio-demo",
+  "nombre": "Consultorio Dra. Ana Pérez",
+  "zonaHoraria": "America/Caracas",
+  "telefonoEmergencias": "911",
+  "direccion": "Av. Francisco de Miranda, Torre Ejemplo, piso 3, consultorio 3-B, Chacao, Caracas",
+  "comoLlegar": "Frente a la estación de Metro Chacao. Hay estacionamiento pagado en el sótano.",
+  "telefonoContacto": "+58 412-000-0000",
+  "urlPoliticaDatos": "https://ejemplo.com/privacidad",
+  "horario": {
+    "lunes": [["08:00", "12:00"], ["14:00", "18:00"]],
+    "martes": [["08:00", "12:00"], ["14:00", "18:00"]],
+    "miercoles": [["08:00", "12:00"]],
+    "jueves": [["08:00", "12:00"], ["14:00", "18:00"]],
+    "viernes": [["08:00", "13:00"]],
+    "sabado": [],
+    "domingo": []
+  },
+  "servicios": [
+    { "nombre": "Consulta de medicina general", "duracionMin": 30, "precio": "USD 30", "descripcion": "Evaluación general, incluye informe." },
+    { "nombre": "Control o seguimiento", "duracionMin": 20, "precio": "USD 20", "descripcion": "Para pacientes ya atendidos en los últimos 30 días." },
+    { "nombre": "Certificado de salud", "duracionMin": 20, "precio": "USD 25" },
+    { "nombre": "Electrocardiograma", "duracionMin": 30, "precio": "USD 35", "agendable": false, "descripcion": "Se realiza durante la consulta si la doctora lo indica." }
+  ],
+  "profesionales": [{ "nombre": "Dra. Ana Pérez", "especialidad": "Medicina general" }],
+  "segurosAceptados": ["Seguros Mercantil", "Seguros Caracas", "Mapfre"],
+  "formasDePago": ["Efectivo en USD", "Zelle", "Pago Móvil", "Punto de venta"],
+  "politicaCancelacion": "Puedes cancelar o cambiar tu cita sin costo hasta 4 horas antes.",
+  "faq": [
+    { "pregunta": "¿Atienden niños?", "respuesta": "Sí, a partir de los 12 años." },
+    { "pregunta": "¿Hacen informes médicos?", "respuesta": "Sí, el informe está incluido en la consulta." }
+  ],
+  "anticipacionMinimaHoras": 2,
+  "diasMaximosAgenda": 30,
+  "intervaloMin": 30
+}

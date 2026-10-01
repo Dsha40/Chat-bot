@@ -1,6 +1,6 @@
 # ADR 0001 — Ruta inicial: A → C (validar revendiendo y construir un MVP mínimo)
 
-- **Estado:** Propuesta (pendiente de aprobación de la Fase 0)
+- **Estado:** Aceptada con cambio: el usuario pidió construir directamente (2026-10-01), así que se omite la etapa de Convocore
 - **Fecha:** 2026-10-01
 
 ## Contexto
