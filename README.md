@@ -25,7 +25,7 @@ cp config/clinica.ejemplo.json config/clinica.json   # edita los datos de tu cl�
    ```bash
    npm run models
    ```
-3. Elige `LLM_MODEL` (por defecto `gemini-2.5-flash-lite`). Si quieres respuestas de mejor calidad, usa un modelo "flash" más nuevo de la lista. Opcionalmente pon otro en `LLM_FALLBACK_MODEL`, que se usa si el principal falla.
+3. Elige `LLM_MODEL` (por defecto `gemini-3.5-flash-lite`). Si quieres respuestas de mejor calidad, usa un modelo "flash" más nuevo de la lista. Opcionalmente pon otro en `LLM_FALLBACK_MODEL`, que se usa si el principal falla.
 4. Habla con el bot de una de estas dos formas:
    ```bash
    npm run chat     # en la terminal

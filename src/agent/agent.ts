@@ -122,7 +122,8 @@ export class ClinicAgent {
         text = result.text.trim();
         break;
       } catch (err) {
-        console.error(`[agent] model ${attempt.id} failed`, err);
+        const detail = err instanceof Error ? err.message : String(err);
+        console.error(`[agent] el modelo ${attempt.id} falló: ${detail}`);
       }
     }
 

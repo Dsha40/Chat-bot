@@ -15,7 +15,7 @@ const schema = z.object({
   ADMIN_TOKEN: optional,
 
   GOOGLE_GENERATIVE_AI_API_KEY: optional,
-  LLM_MODEL: z.string().default('gemini-2.5-flash-lite'),
+  LLM_MODEL: z.string().default('gemini-3.5-flash-lite'),
   LLM_FALLBACK_MODEL: optional,
 
   WHATSAPP_TOKEN: optional,

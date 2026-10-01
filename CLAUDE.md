@@ -60,7 +60,7 @@ Detalle en `docs/00-mercados.md`.
 |---|---|---|
 | Panel | Next.js (App Router) + TypeScript + Tailwind + shadcn/ui | Autohospedado con **Coolify** en Hetzner. **Vercel Hobby no permite uso comercial** |
 | Widget | Web Component o Preact + Vite | Bundle pequeño |
-| IA | Vercel AI SDK (Apache 2.0) detrás de una interfaz `LlmProvider` propia | **Mientras el fundador resida en VE, todo el tráfico va a Gemini:** 2.5 Flash-Lite por defecto y 3.x Flash como escalado. Anthropic y OpenAI no abren cuentas de API a residentes en VE. Se reevalúa con una entidad fuera de VE (ADR 0004) |
+| IA | Vercel AI SDK (Apache 2.0) detrás de una interfaz `LlmProvider` propia | **Mientras el fundador resida en VE, todo el tráfico va a Gemini:** 3.5 Flash-Lite por defecto (2.5 Flash-Lite ya no se ofrece a cuentas nuevas) y 3.x Flash como respaldo. Anthropic y OpenAI no abren cuentas de API a residentes en VE. Se reevalúa con una entidad fuera de VE (ADR 0004) |
 | Datos | Postgres + pgvector en el VPS, Drizzle ORM | Supabase Free solo para prototipos: se pausa tras 7 días sin actividad |
 | Canales | WhatsApp Cloud API (Meta) → widget web → Instagram, Messenger y Telegram (Fase 3) | — |
 | Agenda | Google Calendar API (gratuita) + agenda propia simple | Cal.com es AGPL: evitarlo salvo que se autohospede sin modificar |
