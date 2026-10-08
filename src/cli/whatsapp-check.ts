@@ -36,7 +36,8 @@ if (i > 0) {
     await wa.sendTemplate(to, 'hello_world', 'en_US', []);
     console.log(`✔ Mensaje de prueba ("hello_world") enviado a ${to}. Revisa tu WhatsApp.`);
   } catch (err) {
-    console.error(`✘ ${describeWhatsAppError(err)}`);
+    console.error(`✘ ${describeWhatsAppError(err).split('\n')[0]}`);
+    console.error('   → Revisa que sea el "Identificador de la cuenta de WhatsApp Business" (no el del número de teléfono).');
     process.exit(1);
   }
 }
@@ -44,7 +45,7 @@ if (i > 0) {
 const j = process.argv.indexOf('--suscribir');
 if (j > 0) {
   const waba = (process.argv[j + 1] ?? '').trim();
-  if (!waba) {
+  if (!/^\d{6,}$/.test(waba)) {
     console.error('✘ Indica el "WhatsApp Business Account ID" (está en API Setup): npm run whatsapp -- --suscribir 1234567890');
     process.exit(1);
   }
@@ -52,7 +53,8 @@ if (j > 0) {
     await wa.subscribeApp(waba);
     console.log('✔ App suscrita a la cuenta de WhatsApp: los mensajes reales llegarán al webhook.');
   } catch (err) {
-    console.error(`✘ ${describeWhatsAppError(err)}`);
+    console.error(`✘ ${describeWhatsAppError(err).split('\n')[0]}`);
+    console.error('   → Revisa que sea el "Identificador de la cuenta de WhatsApp Business" (no el del número de teléfono).');
     process.exit(1);
   }
 }
