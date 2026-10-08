@@ -26,7 +26,7 @@ export async function sendDueReminders(opts: { store: Store; clinic: Clinic; env
       } else if (insideWindow) {
         await whatsapp.sendText(
           conv.userId,
-          `Hola ${a.patientName} 👋 Te recordamos tu cita de ${a.service} el ${when} en ${clinic.nombre}. Si necesitas cambiarla o cancelarla, respóndeme por aquí.`,
+          `Hola ${a.patientName} 👋 Te recordamos tu cita de ${a.service} el ${when} en ${clinic.nombre} (ticket #${a.id}). Si necesitas cambiarla o cancelarla, respóndeme por aquí con tu número de ticket.`,
         );
       } else {
         console.warn(`[reminders] appointment ${a.id}: no template configured and 24 h window closed; reminder skipped`);

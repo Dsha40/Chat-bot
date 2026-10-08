@@ -53,9 +53,9 @@ describe('CSV export for Excel', () => {
 
     const citas = appointmentsCsv(store, clinic).replace('﻿', '').split('\r\n');
     expect(citas[0]).toBe(
-      'ID cita;Fecha;Hora;Servicio;Estado;Nombre y apellido;Cédula;Fecha de nacimiento;Seguro;Correo electrónico;Teléfono WhatsApp;Canal;Agendada el',
+      'Ticket;Fecha;Hora;Servicio;Estado;Nombre y apellido;Cédula;Fecha de nacimiento;Seguro;Correo electrónico;Teléfono WhatsApp;Canal;Agendada el',
     );
-    expect(citas[1]).toMatch(/^\w+;05\/10\/2026;10:00;Consulta de medicina general;Confirmada;Juan Pérez;V-12345678;;Mapfre;;58412 1234567;whatsapp;/);
+    expect(citas[1]).toMatch(/^\d{6};05\/10\/2026;10:00;Consulta de medicina general;Confirmada;Juan Pérez;V-12345678;;Mapfre;;58412 1234567;whatsapp;/);
 
     const pacientes = patientsCsv(store, clinic).replace('﻿', '').split('\r\n');
     expect(pacientes[1]).toMatch(/^Juan Pérez;V-12345678;;Mapfre;;58412 1234567;whatsapp;1;/);

@@ -29,7 +29,7 @@ function phone(channel: string, userId: string): string {
 
 export function appointmentsCsv(store: Store, clinic: Clinic, opts?: CsvOptions): string {
   const fields = clinic.datosPaciente;
-  const header = ['ID cita', 'Fecha', 'Hora', 'Servicio', 'Estado', ...fields.map((f) => f.etiqueta), 'Teléfono WhatsApp', 'Canal', 'Agendada el'];
+  const header = ['Ticket', 'Fecha', 'Hora', 'Servicio', 'Estado', ...fields.map((f) => f.etiqueta), 'Teléfono WhatsApp', 'Canal', 'Agendada el'];
   const rows = store.allAppointments().map((a) => {
     const start = DateTime.fromISO(a.start).setZone(clinic.zonaHoraria);
     const [channel = '', userId = ''] = a.conversationId.split(/:(.*)/s);

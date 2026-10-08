@@ -3,7 +3,7 @@
 Bot que atiende pacientes por WhatsApp (y por un chat web de demostración):
 
 - **Responde preguntas frecuentes** con los datos de la clínica: horarios, precios, dirección, seguros y formas de pago.
-- **Gestiona citas:** agenda, reagenda y cancela. No puede inventar horarios porque solo ofrece los que están libres de verdad.
+- **Gestiona citas:** agenda, reagenda y cancela. No puede inventar horarios porque solo ofrece los que están libres de verdad. Cada cita tiene un **número de ticket** de 6 dígitos (ej. #482731) para cambiarla o cancelarla. Desde otro número hay que dar además la cédula o el nombre del paciente.
 - **Entiende notas de voz.**
 - **Recordatorios:** avisa el día antes de la cita.
 - **Derivación a una persona:** pasa la conversación al equipo cuando hace falta. Con las urgencias responde de inmediato, sin pasar por la IA.

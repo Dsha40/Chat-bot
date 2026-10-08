@@ -159,4 +159,46 @@ describe('ClinicAgent', () => {
     expect(system.content).toContain('V-12345678');
     expect(system.content).toContain('Cédula [clave: cedula] (obligatorio)');
   });
+
+  it('gives a 6-digit ticket and lets the patient cancel with it', async () => {
+    const model = scriptedModel([
+      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: FIRST_SLOT, datosPaciente: { nombre: 'Luis Mora', cedula: '20111222' } } },
+      { text: 'Listo, tu ticket es #...' },
+    ]);
+    const { agent, agenda } = setup(model);
+    await agent.handle({ channel: 'whatsapp', userId: '58414', text: 'cita a las 10' });
+    const ticket = lastToolOutput(model, 1).ticket as string;
+    expect(ticket).toMatch(/^\d{6}$/);
+
+    // Written with "#" and spaces from the same chat: the ticket is enough.
+    const spaced = `#${ticket.slice(0, 3)} ${ticket.slice(3)}`;
+    expect(await agenda.cancel('whatsapp:58414', spaced)).toMatchObject({ ok: true });
+    expect((await agenda.cancel('whatsapp:58414', ticket)).ok).toBe(false); // already cancelled
+  });
+
+  it('from another number, cancelling needs the patient ID or full name too', async () => {
+    const { agenda } = setup(scriptedModel([{ text: 'x' }]));
+    const r = await agenda.book({
+      conversationId: 'whatsapp:58414',
+      patientName: 'Luis Mora',
+      serviceName: CONSULTA,
+      startIso: FIRST_SLOT,
+      patientData: { nombre: 'Luis Mora', cedula: 'V-20111222' },
+    });
+    if (!r.ok) throw new Error(r.reason);
+    const t = r.appointment.id;
+
+    expect((await agenda.cancel('whatsapp:58999', t)).reason).toContain('cédula o el nombre completo');
+    expect((await agenda.cancel('whatsapp:58999', t, 'V-99999999')).ok).toBe(false);
+    expect((await agenda.cancel('whatsapp:58999', '000000', '20111222')).reason).toContain('No encontré');
+    expect((await agenda.cancel('whatsapp:58999', t, '20.111.222')).ok).toBe(true);
+  });
+
+  it('a relative can reschedule with ticket + full name', async () => {
+    const { agenda } = setup(scriptedModel([{ text: 'x' }]));
+    const r = await agenda.book({ conversationId: 'web:a', patientName: 'Ana Gil', serviceName: CONSULTA, startIso: FIRST_SLOT });
+    if (!r.ok) throw new Error(r.reason);
+    const moved = await agenda.reschedule('web:b', r.appointment.id, '2026-10-06T09:00:00-04:00', 'ana gil');
+    expect(moved).toMatchObject({ ok: true, label: 'martes 6 de octubre, 9:00 a. m.' });
+  });
 });

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt } from 'node:crypto';
 import { DateTime } from 'luxon';
 import { findService, type Clinic, type Service } from '../config/clinic.ts';
 import type { Store, StoredAppointment } from '../store/db.ts';
@@ -99,15 +99,16 @@ export class Agenda {
       const slot = await this.validateSlot(service, input.startIso);
       if ('ok' in slot) return slot;
 
+      const ticket = this.newTicket();
       const externalId = await this.calendar.createEvent({
-        summary: `${service.nombre} — ${input.patientName}`,
+        summary: `${service.nombre} — ${input.patientName} (ticket #${ticket})`,
         description: `Agendada por el asistente virtual. Conversación: ${input.conversationId}`,
         start: slot.start,
         end: slot.end,
         timeZone: this.clinic.zonaHoraria,
       });
       const appointment: StoredAppointment = {
-        id: randomUUID().slice(0, 8),
+        id: ticket,
         conversationId: input.conversationId,
         patientName: input.patientName,
         service: service.nombre,
@@ -129,25 +130,50 @@ export class Agenda {
       .map((a) => ({ ...a, label: formatSlotLabel(new Date(a.start), this.clinic.zonaHoraria) }));
   }
 
-  private ownAppointment(conversationId: string, id: string): StoredAppointment | undefined {
-    const a = this.store.getAppointment(id);
-    return a && a.conversationId === conversationId && a.status === 'confirmed' ? a : undefined;
+  /** 6-digit ticket, easy to read out over the phone and unique in the DB. */
+  private newTicket(): string {
+    for (;;) {
+      const t = String(randomInt(100000, 1000000));
+      if (!this.store.getAppointment(t)) return t;
+    }
   }
 
-  cancel(conversationId: string, id: string): Promise<{ ok: boolean; reason?: string }> {
+  /**
+   * Finds an upcoming confirmed appointment by ticket ("#482731", "482 731"...).
+   * From the conversation that booked it the ticket is enough; from any other chat
+   * the patient must also give the ID number or full name on the appointment.
+   */
+  private findForChange(conversationId: string, ticket: string, verification?: string): StoredAppointment | string {
+    const clean = ticket.replace(/[#\s-]/g, '').trim();
+    const a = this.store.getAppointment(clean) ?? this.store.getAppointment(clean.toLowerCase());
+    if (!a || a.status !== 'confirmed' || new Date(a.start) <= this.now()) {
+      return 'No encontré una cita futura con ese número de ticket.';
+    }
+    if (a.conversationId === conversationId) return a;
+    const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const v = verification ? norm(verification) : '';
+    const data = a.patientData ?? { nombre: a.patientName };
+    const candidates = [data.cedula, data.nombre ?? a.patientName].filter(Boolean).map((x) => norm(x!));
+    if (v && candidates.some((c) => c === v || (c.length > 3 && c.endsWith(v) && v.length >= 6))) return a;
+    return 'Para cambiar o cancelar una cita agendada desde otro número, pide la cédula o el nombre completo del paciente (campo verificacion).';
+  }
+
+  cancel(conversationId: string, ticket: string, verification?: string): Promise<{ ok: boolean; reason?: string; appointment?: StoredAppointment }> {
     return this.exclusive(async () => {
-      const a = this.ownAppointment(conversationId, id);
-      if (!a) return { ok: false, reason: 'No encontré esa cita entre las citas futuras de este paciente.' };
+      const a = this.findForChange(conversationId, ticket, verification);
+      if (typeof a === 'string') return { ok: false, reason: a };
+      const id = a.id;
       if (a.externalId) await this.calendar.deleteEvent(a.externalId);
       this.store.updateAppointment(id, { status: 'cancelled' });
-      return { ok: true };
+      return { ok: true, appointment: a };
     });
   }
 
-  reschedule(conversationId: string, id: string, newStartIso: string): Promise<BookResult> {
+  reschedule(conversationId: string, ticket: string, newStartIso: string, verification?: string): Promise<BookResult> {
     return this.exclusive(async () => {
-      const a = this.ownAppointment(conversationId, id);
-      if (!a) return { ok: false, reason: 'No encontré esa cita entre las citas futuras de este paciente.' };
+      const a = this.findForChange(conversationId, ticket, verification);
+      if (typeof a === 'string') return { ok: false, reason: a };
+      const id = a.id;
       const service = this.resolveService(a.service);
       if (!service) return { ok: false, reason: 'El servicio de esa cita ya no existe.' };
       const slot = await this.validateSlot(service, newStartIso, id);
@@ -155,7 +181,7 @@ export class Agenda {
 
       if (a.externalId) await this.calendar.deleteEvent(a.externalId);
       const externalId = await this.calendar.createEvent({
-        summary: `${service.nombre} — ${a.patientName}`,
+        summary: `${service.nombre} — ${a.patientName} (ticket #${a.id})`,
         description: `Reagendada por el asistente virtual. Conversación: ${conversationId}`,
         start: slot.start,
         end: slot.end,

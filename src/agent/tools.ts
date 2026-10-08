@@ -93,7 +93,7 @@ export function buildTools(ctx: ToolContext) {
         }
         return {
           ok: true,
-          citaId: r.appointment.id,
+          ticket: r.appointment.id,
           servicio: r.appointment.service,
           fechaHora: r.label,
           direccion: clinic.direccion,
@@ -105,28 +105,35 @@ export function buildTools(ctx: ToolContext) {
       description: 'Lista las próximas citas confirmadas de este paciente.',
       inputSchema: z.object({}),
       execute: async () => ({
-        citas: agenda.upcoming(conversationId).map((a) => ({ citaId: a.id, servicio: a.service, fechaHora: a.label, paciente: a.patientName })),
+        citas: agenda.upcoming(conversationId).map((a) => ({ ticket: a.id, servicio: a.service, fechaHora: a.label, paciente: a.patientName })),
       }),
     }),
 
     cancelar_cita: tool({
-      description: 'Cancela una cita del paciente. Confirma con el paciente antes de usarla.',
-      inputSchema: z.object({ citaId: z.string() }),
-      execute: async ({ citaId }) => {
-        const r = await agenda.cancel(conversationId, citaId);
+      description: 'Cancela una cita usando su número de ticket. Confirma con el paciente antes de usarla.',
+      inputSchema: z.object({
+        ticket: z.string().describe('Número de ticket de la cita, por ejemplo 482731'),
+        verificacion: z.string().optional().describe('Cédula o nombre completo del paciente; solo si la cita se agendó desde otro número'),
+      }),
+      execute: async ({ ticket, verificacion }) => {
+        const r = await agenda.cancel(conversationId, ticket, verificacion);
         return r.ok ? { ok: true } : { ok: false, motivo: r.reason };
       },
     }),
 
     reagendar_cita: tool({
       description: 'Mueve una cita existente a un nuevo horario. Usa un "inicio" devuelto por buscar_horarios.',
-      inputSchema: z.object({ citaId: z.string(), nuevoInicio: z.string() }),
-      execute: async ({ citaId, nuevoInicio }) => {
-        const r = await agenda.reschedule(conversationId, citaId, nuevoInicio);
+      inputSchema: z.object({
+        ticket: z.string().describe('Número de ticket de la cita'),
+        nuevoInicio: z.string(),
+        verificacion: z.string().optional().describe('Cédula o nombre completo del paciente; solo si la cita se agendó desde otro número'),
+      }),
+      execute: async ({ ticket, nuevoInicio, verificacion }) => {
+        const r = await agenda.reschedule(conversationId, ticket, nuevoInicio, verificacion);
         if (!r.ok) {
           return { ok: false, motivo: r.reason, alternativas: r.alternatives?.map((s) => ({ inicio: s.iso, texto: s.label })) };
         }
-        return { ok: true, citaId: r.appointment.id, fechaHora: r.label };
+        return { ok: true, ticket: r.appointment.id, fechaHora: r.label };
       },
     }),
 

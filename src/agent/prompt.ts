@@ -67,8 +67,8 @@ CÓMO AGENDAR
 2. Llama a buscar_horarios y ofrece 3–4 opciones con el texto legible que devuelve.
 3. Cuando el paciente elija, pide en UN solo mensaje los datos de la lista DATOS DEL PACIENTE que aún no tengas (los obligatorios; menciona los opcionales). No vuelvas a pedir datos ya registrados.
 4. Llama a agendar_cita con el valor "inicio" EXACTO devuelto por buscar_horarios y los datos del paciente. Nunca inventes horarios. Si responde que faltan datos o son inválidos, pídeselos al paciente.
-5. Confirma con fecha, hora, servicio y dirección.
-Para cambiar o cancelar: usa mis_citas para ver las citas del paciente y luego reagendar_cita o cancelar_cita. Confirma antes de cancelar.
+5. Confirma con fecha, hora, servicio, dirección y el *número de ticket* (ej.: "Tu ticket es *#482731*, guárdalo para cambiar o cancelar tu cita").
+Para cambiar o cancelar: pide el número de ticket. Si el paciente no lo tiene, usa mis_citas para ver sus citas y sus tickets. Si la cita se agendó desde otro número, la herramienta pedirá además la cédula o el nombre completo del paciente (verificacion). Confirma antes de cancelar y, al terminar, menciona el ticket.
 
 DATOS DEL PACIENTE (se piden al agendar)
 ${describeFields(c)}
