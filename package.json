@@ -14,6 +14,7 @@
     "costs": "tsx src/cli/costs.ts",
     "export": "tsx src/cli/export.ts",
     "calendario": "tsx src/cli/calendar-check.ts",
+    "whatsapp": "tsx src/cli/whatsapp-check.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

@@ -74,6 +74,52 @@ export function parseWebhook(body: any): ParsedWebhook {
   return out;
 }
 
+/** Common Meta error codes → what to do, in Spanish, for the console. */
+const HINTS: Record<number, string> = {
+  190: 'El token de WhatsApp venció o es inválido. Los tokens temporales duran 24 h: genera otro en "API Setup" o crea uno permanente.',
+  100: 'Parámetro inválido. Revisa WHATSAPP_PHONE_NUMBER_ID (debe ser el "Phone number ID", no el número de teléfono).',
+  10: 'El token no tiene permiso sobre este número. Revisa que el token sea de la misma app/negocio.',
+  200: 'El token no tiene permiso sobre este número. Revisa que el token sea de la misma app/negocio.',
+  131030: 'Con el número de prueba solo puedes escribir a números autorizados: agrega tu teléfono en "API Setup → To" y verifícalo.',
+  131047: 'Pasaron más de 24 h desde el último mensaje del paciente: fuera de esa ventana solo se pueden enviar plantillas aprobadas.',
+  131042: 'Problema de pago: agrega un método de pago en Meta Business (WhatsApp Manager → Configuración de pagos).',
+  131026: 'El mensaje no se pudo entregar (el número no tiene WhatsApp o no aceptó los términos nuevos).',
+  133010: 'El número del negocio no está registrado en la Cloud API.',
+  132001: 'La plantilla no existe o no está aprobada en ese idioma.',
+  131056: 'Demasiados mensajes seguidos al mismo número; espera un momento.',
+  368: 'El número está bloqueado temporalmente por Meta por incumplir políticas.',
+};
+
+export class WhatsAppApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: number | undefined,
+    readonly metaMessage: string,
+  ) {
+    super(`WhatsApp API ${status}${code !== undefined ? ` (código ${code})` : ''}: ${metaMessage}`);
+  }
+
+  get hint(): string | undefined {
+    return this.code !== undefined ? HINTS[this.code] : undefined;
+  }
+}
+
+/** One-line, human description of any error thrown while talking to WhatsApp. */
+export function describeWhatsAppError(err: unknown): string {
+  if (err instanceof WhatsAppApiError) return err.hint ? `${err.message}\n   → ${err.hint}` : err.message;
+  return err instanceof Error ? err.message : String(err);
+}
+
+async function toApiError(res: Response): Promise<WhatsAppApiError> {
+  const text = await res.text();
+  try {
+    const { error } = JSON.parse(text) as { error?: { message?: string; code?: number; error_data?: { details?: string } } };
+    return new WhatsAppApiError(res.status, error?.code, [error?.message, error?.error_data?.details].filter(Boolean).join(' — ') || text);
+  } catch {
+    return new WhatsAppApiError(res.status, undefined, text);
+  }
+}
+
 export interface WhatsAppConfig {
   token: string;
   phoneNumberId: string;
@@ -97,7 +143,26 @@ export class WhatsAppClient {
       headers: { Authorization: `Bearer ${this.cfg.token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messaging_product: 'whatsapp', ...(body as object) }),
     });
-    if (!res.ok) throw new Error(`WhatsApp API ${res.status}: ${await res.text()}`);
+    if (!res.ok) throw await toApiError(res);
+  }
+
+  /** Subscribes this app to the WhatsApp Business Account so real messages reach the webhook. */
+  async subscribeApp(wabaId: string): Promise<void> {
+    const res = await this.fetch(`${this.base}/${wabaId}/subscribed_apps`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.cfg.token}` },
+    });
+    if (!res.ok) throw await toApiError(res);
+  }
+
+  /** Reads the business phone number's public info (used by `npm run whatsapp`). */
+  async phoneInfo(): Promise<{ display_phone_number?: string; verified_name?: string; quality_rating?: string; code_verification_status?: string }> {
+    const res = await this.fetch(
+      `${this.base}/${this.cfg.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating,code_verification_status`,
+      { headers: { Authorization: `Bearer ${this.cfg.token}` } },
+    );
+    if (!res.ok) throw await toApiError(res);
+    return (await res.json()) as any;
   }
 
   sendText(to: string, text: string): Promise<void> {
@@ -111,7 +176,7 @@ export class WhatsAppClient {
       template: {
         name,
         language: { code: lang },
-        components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }],
+        ...(params.length ? { components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }] } : {}),
       },
     });
   }
@@ -124,7 +189,7 @@ export class WhatsAppClient {
   async downloadMedia(mediaId: string): Promise<{ data: Uint8Array; mediaType: string }> {
     const auth = { Authorization: `Bearer ${this.cfg.token}` };
     const meta = await this.fetch(`${this.base}/${mediaId}`, { headers: auth });
-    if (!meta.ok) throw new Error(`WhatsApp media ${meta.status}: ${await meta.text()}`);
+    if (!meta.ok) throw await toApiError(meta);
     const { url, mime_type } = (await meta.json()) as { url: string; mime_type: string };
     const file = await this.fetch(url, { headers: auth });
     if (!file.ok) throw new Error(`WhatsApp media download ${file.status}`);

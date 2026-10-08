@@ -137,3 +137,43 @@ describe('WhatsApp end to end (Meta API mocked)', () => {
     expect((await res.json()).replies.at(-1)).toBe('Estamos en Chacao.');
   });
 });
+
+import { describeWhatsAppError, WhatsAppApiError } from '../src/channels/whatsapp.ts';
+
+describe('WhatsApp API errors', () => {
+  const failing = (code: number, message: string) =>
+    (async () => Response.json({ error: { message, code } }, { status: 400 })) as unknown as typeof fetch;
+
+  it.each([
+    [190, 'token de WhatsApp venció'],
+    [131030, 'números autorizados'],
+    [131047, '24 h'],
+    [100, 'Phone number ID'],
+  ])('code %i gives a Spanish hint', async (code, hint) => {
+    const wa = new WhatsAppClient({ token: 'T', phoneNumberId: 'P', apiVersion: 'v23.0', fetch: failing(code, 'meta says no') });
+    const err = await wa.sendText('58412', 'hola').catch((e) => e);
+    expect(err).toBeInstanceOf(WhatsAppApiError);
+    expect(err.code).toBe(code);
+    expect(describeWhatsAppError(err)).toContain(hint);
+  });
+
+  it('sends the hello_world template without empty components', async () => {
+    const bodies: any[] = [];
+    const wa = new WhatsAppClient({
+      token: 'T',
+      phoneNumberId: 'P',
+      apiVersion: 'v23.0',
+      fetch: (async (_u: string, init?: RequestInit) => {
+        bodies.push(JSON.parse(String(init?.body)));
+        return Response.json({});
+      }) as typeof fetch,
+    });
+    await wa.sendTemplate('58412', 'hello_world', 'en_US', []);
+    expect(bodies[0]).toEqual({
+      messaging_product: 'whatsapp',
+      to: '58412',
+      type: 'template',
+      template: { name: 'hello_world', language: { code: 'en_US' } },
+    });
+  });
+});

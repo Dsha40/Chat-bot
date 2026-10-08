@@ -84,22 +84,77 @@ Los archivos se abren con doble clic en Excel: acentos correctos, una columna po
 
 ## 3. Conectar WhatsApp (API oficial de Meta)
 
-1. Crea una app de tipo "Business" en https://developers.facebook.com y añade el producto **WhatsApp**.
-2. En *WhatsApp → API Setup* registra el número de la clínica y copia el **Phone number ID** y un **token permanente** (créalo con un usuario del sistema en Business Settings). Ponlos en `WHATSAPP_PHONE_NUMBER_ID` y `WHATSAPP_TOKEN`.
-3. En *App settings → Basic* copia el **App secret** a `WHATSAPP_APP_SECRET`.
-4. Inventa una contraseña para `WHATSAPP_VERIFY_TOKEN`.
-5. Publica el servidor con HTTPS (paso 5). En *WhatsApp → Configuration → Webhook*:
-   - URL: `https://TU-DOMINIO/webhook/whatsapp`
-   - Verify token: el mismo de `WHATSAPP_VERIFY_TOKEN`
-   - Suscríbete al campo **messages**. Si la clínica sigue usando la app WhatsApp Business en el mismo número (*coexistence*), suscríbete también a **smb_message_echoes**: así el bot se calla cuando responde una persona.
-6. En *Billing*, agrega tu tarjeta. Meta cobra por mensaje (ver `docs/00-benchmark.md` §2.4).
-7. (Opcional) Para los recordatorios fuera de la ventana de 24 h, crea una plantilla **utility** en español con el texto:
+Primero lo pruebas **gratis con el número de prueba de Meta** desde tu Codespace. Cuando funcione, pasas al número real de la clínica y a un servidor.
+
+### 3.1 Crear la app en Meta (una sola vez)
+
+1. Entra a https://developers.facebook.com con tu Facebook y regístrate como desarrollador si te lo pide.
+2. **Mis apps → Crear app**. Elige el caso de uso **"Conectar con clientes por WhatsApp"** (o tipo "Business" + producto **WhatsApp**). Si te pide un *portfolio comercial*, crea uno con el nombre de tu negocio.
+3. En el menú de la app, ve a **WhatsApp → API Setup** (o "Configuración de la API" / "Getting started"). Ahí verás:
+   - **Número de prueba** ("From"): Meta te lo da gratis.
+   - **Phone number ID**: cópialo.
+   - **WhatsApp Business Account ID**: cópialo también, lo usarás en el paso 3.3.
+   - **Token de acceso temporal**: pulsa *Generar*. **Dura 24 horas**.
+4. En el campo **"To"**, agrega **tu número personal** y escribe el código que te llega por WhatsApp. Con el número de prueba, el bot solo puede escribirle a los números que agregues ahí (hasta 5).
+5. Ve a **Configuración de la app → Básica** y copia la **Clave secreta de la app** (App secret) con el botón *Mostrar*.
+
+### 3.2 Configurar el bot
+
+En `.env`:
+```
+WHATSAPP_TOKEN=el-token-temporal
+WHATSAPP_PHONE_NUMBER_ID=el-phone-number-id
+WHATSAPP_APP_SECRET=la-clave-secreta-de-la-app
+WHATSAPP_VERIFY_TOKEN=inventa-una-palabra-secreta
+```
+
+Comprueba que todo esté bien y envíate un mensaje de prueba (tu número con código de país y sin "+"):
+```bash
+npm run whatsapp -- --enviar 58412XXXXXXX
+```
+Si te llega un "Hello World" a tu WhatsApp, el token y el número funcionan.
+
+### 3.3 Conectar el webhook (para que el bot reciba los mensajes)
+
+1. Arranca el bot:
+   ```bash
+   npm run dev
+   ```
+2. Hazlo público:
+   - **En Codespaces:** abre la pestaña **PORTS** (junto a TERMINAL), haz clic derecho en el puerto **3000** → **Port Visibility → Public**. Copia la dirección; es algo como `https://tu-codespace-3000.app.github.dev`. Si no la pones en **Public**, Meta no podrá entrar.
+   - **En tu computadora:** usa `cloudflared tunnel --url http://localhost:3000` y copia la URL que te da.
+3. En Meta, ve a **WhatsApp → Configuración → Webhook → Editar**:
+   - **URL de devolución de llamada:** `https://TU-DIRECCION/webhook/whatsapp`
+   - **Token de verificación:** la misma palabra que pusiste en `WHATSAPP_VERIFY_TOKEN`
+   - Pulsa **Verificar y guardar**. En la terminal del bot debe aparecer `✔ Meta verificó el webhook correctamente`.
+4. En **Campos del webhook**, pulsa **Administrar** y suscríbete a **messages**.
+5. Suscribe la app a tu cuenta de WhatsApp. A veces el panel no lo hace solo y, sin esto, los mensajes no llegan:
+   ```bash
+   npm run whatsapp -- --suscribir TU_WHATSAPP_BUSINESS_ACCOUNT_ID
+   ```
+6. **Escríbele "hola" al número de prueba desde tu WhatsApp.** En la terminal verás:
+   ```
+   [whatsapp] ← 58412XXXXXXX (Tu nombre): hola
+   [whatsapp] → 58412XXXXXXX: Hola 👋 Soy el asistente virtual…
+   ```
+   y la respuesta te llegará al teléfono.
+
+Si algo falla, la terminal dice qué pasó y qué hacer (token vencido, número no autorizado, firma inválida…).
+
+### 3.4 Pasar a producción (número real de la clínica)
+
+Cuando el médico lo apruebe:
+
+1. **Número real:** en **WhatsApp → API Setup → Agregar número de teléfono**, registra el número de la clínica. Debe poder recibir un SMS o llamada para verificarlo.
+   - Si ese número ya se usa en la app WhatsApp Business, Meta permite usar la app y la API a la vez (*coexistence*). En ese caso suscríbete también al campo **smb_message_echoes**: así el bot se calla cuando una persona responde desde la app.
+2. **Token permanente:** en **business.facebook.com → Configuración del negocio → Usuarios del sistema**, crea un usuario del sistema con rol de administrador, asígnale la app y la cuenta de WhatsApp, y genera un token con los permisos `whatsapp_business_messaging` y `whatsapp_business_management`. Ponlo en `WHATSAPP_TOKEN`.
+3. **Pago:** agrega tu tarjeta en **WhatsApp Manager → Configuración de pagos**. Meta cobra por mensaje (ver `docs/00-benchmark.md` §2.4).
+4. **Servidor:** publícalo en un VPS (sección 5). Codespaces se apaga cuando no lo usas, así que solo sirve para pruebas.
+5. **Recordatorios (opcional):** fuera de la ventana de 24 h, WhatsApp solo permite plantillas aprobadas. Crea una plantilla **utility** en español con el texto:
    > Hola {{1}}, te recordamos tu cita el {{2}} en {{3}}.
 
    Pon su nombre en `WHATSAPP_REMINDER_TEMPLATE`.
-8. (Opcional) Pon en `STAFF_WHATSAPP` el número de recepción para recibir los avisos de derivación.
-
-**Para probar sin dominio** puedes exponer tu PC con `cloudflared tunnel --url http://localhost:3000` y usar la URL que te da.
+6. **Avisos al personal (opcional):** pon en `STAFF_WHATSAPP` el número de recepción para recibir los avisos cuando el bot pase una conversación a una persona.
 
 ## 4. Agenda: ¿dónde revisa el bot los horarios libres?
 
@@ -178,6 +233,7 @@ Ponle HTTPS con Caddy (`caddy reverse-proxy --from tu-dominio.com --to localhost
 | `npm run costs` | Costo de IA acumulado y por conversación |
 | `npm run export` | Exportar citas y pacientes a CSV para Excel |
 | `npm run calendario` | Verificar la conexión con Google Calendar y ver los horarios libres |
+| `npm run whatsapp` | Verificar el token y el número de WhatsApp (`-- --enviar NUM`, `-- --suscribir WABA_ID`) |
 | `npm test` | Pruebas automáticas (no gastan dinero; usan un modelo simulado) |
 
 ## Qué está probado y qué no
