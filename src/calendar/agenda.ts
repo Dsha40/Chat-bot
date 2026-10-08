@@ -86,7 +86,13 @@ export class Agenda {
     return { ok: false, reason: 'Ese horario no está disponible.', alternatives };
   }
 
-  book(input: { conversationId: string; patientName: string; serviceName: string; startIso: string }): Promise<BookResult> {
+  book(input: {
+    conversationId: string;
+    patientName: string;
+    serviceName: string;
+    startIso: string;
+    patientData?: Record<string, string>;
+  }): Promise<BookResult> {
     return this.exclusive(async () => {
       const service = this.resolveService(input.serviceName);
       if (!service || !service.agendable) return { ok: false, reason: `Servicio no agendable: ${input.serviceName}` };
@@ -110,6 +116,7 @@ export class Agenda {
         status: 'confirmed',
         externalId,
         reminderSent: false,
+        patientData: input.patientData,
       };
       this.store.insertAppointment(appointment);
       return { ok: true, appointment, label: slot.label };

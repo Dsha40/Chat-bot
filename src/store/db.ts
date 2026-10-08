@@ -24,6 +24,18 @@ export interface StoredAppointment {
   status: 'confirmed' | 'cancelled';
   externalId: string | null;
   reminderSent: boolean;
+  /** Snapshot of the patient data collected when the appointment was booked. */
+  patientData?: Record<string, string>;
+  createdAt?: string;
+}
+
+export interface PatientRow {
+  conversationId: string;
+  channel: string;
+  userId: string;
+  data: Record<string, string>;
+  updatedAt: string;
+  appointments: number;
 }
 
 export interface UsageRow {
@@ -65,7 +77,13 @@ export class Store {
         cost_usd REAL NOT NULL, created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS processed_messages (id TEXT PRIMARY KEY, created_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS patients (
+        conversation_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
     `);
+    // Migrations for databases created by earlier versions.
+    const cols = (this.db.prepare('PRAGMA table_info(appointments)').all() as { name: string }[]).map((c) => c.name);
+    if (!cols.includes('patient_data')) this.db.exec('ALTER TABLE appointments ADD COLUMN patient_data TEXT');
   }
 
   getOrCreateConversation(channel: string, userId: string, name?: string): { conv: Conversation; isNew: boolean } {
@@ -130,10 +148,21 @@ export class Store {
   insertAppointment(a: Omit<StoredAppointment, 'reminderSent'>): void {
     this.db
       .prepare(
-        `INSERT INTO appointments (id, conversation_id, patient_name, service, start, "end", status, external_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO appointments (id, conversation_id, patient_name, service, start, "end", status, external_id, patient_data, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(a.id, a.conversationId, a.patientName, a.service, a.start, a.end, a.status, a.externalId, new Date().toISOString());
+      .run(
+        a.id,
+        a.conversationId,
+        a.patientName,
+        a.service,
+        a.start,
+        a.end,
+        a.status,
+        a.externalId,
+        a.patientData ? JSON.stringify(a.patientData) : null,
+        new Date().toISOString(),
+      );
   }
 
   updateAppointment(id: string, fields: Partial<Pick<StoredAppointment, 'start' | 'end' | 'status' | 'externalId' | 'reminderSent'>>): void {
@@ -159,7 +188,47 @@ export class Store {
       status: r.status,
       externalId: r.external_id,
       reminderSent: r.reminder_sent === 1,
+      patientData: r.patient_data ? JSON.parse(r.patient_data) : undefined,
+      createdAt: r.created_at,
     };
+  }
+
+  /** Every appointment (any status), oldest first — used for exports. */
+  allAppointments(): StoredAppointment[] {
+    const rows = this.db.prepare('SELECT * FROM appointments ORDER BY start').all() as Record<string, any>[];
+    return rows.map((r) => this.toAppointment(r));
+  }
+
+  getPatient(conversationId: string): Record<string, string> {
+    const r = this.db.prepare('SELECT data FROM patients WHERE conversation_id = ?').get(conversationId) as { data: string } | undefined;
+    return r ? JSON.parse(r.data) : {};
+  }
+
+  savePatient(conversationId: string, data: Record<string, string>): void {
+    this.db
+      .prepare(
+        `INSERT INTO patients (conversation_id, data, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(conversation_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+      )
+      .run(conversationId, JSON.stringify(data), new Date().toISOString());
+  }
+
+  allPatients(): PatientRow[] {
+    const rows = this.db
+      .prepare(
+        `SELECT p.conversation_id, p.data, p.updated_at, c.channel, c.user_id,
+                (SELECT COUNT(*) FROM appointments a WHERE a.conversation_id = p.conversation_id) AS appts
+         FROM patients p LEFT JOIN conversations c ON c.id = p.conversation_id ORDER BY p.updated_at`,
+      )
+      .all() as Record<string, any>[];
+    return rows.map((r) => ({
+      conversationId: r.conversation_id,
+      channel: r.channel ?? '',
+      userId: r.user_id ?? '',
+      data: JSON.parse(r.data),
+      updatedAt: r.updated_at,
+      appointments: r.appts,
+    }));
   }
 
   getAppointment(id: string): StoredAppointment | undefined {

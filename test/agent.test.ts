@@ -9,7 +9,7 @@ describe('ClinicAgent', () => {
   it('books an appointment end to end through tool calls', async () => {
     const model = scriptedModel([
       { tool: 'buscar_horarios', input: { servicio: 'consulta medicina general' } },
-      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: FIRST_SLOT, nombrePaciente: 'Juan Pérez' } },
+      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: FIRST_SLOT, datosPaciente: { nombre: 'Juan Pérez', cedula: 'v12.345.678', seguro: 'mercantil' } } },
       { text: 'Listo Juan, tu cita quedó para el lunes 5 de octubre a las 10:00 a. m.' },
     ]);
     const { agent, store } = setup(model);
@@ -28,7 +28,13 @@ describe('ClinicAgent', () => {
 
     const appts = store.upcomingForConversation('whatsapp:584120000001', '2026-10-01T00:00:00Z');
     expect(appts).toHaveLength(1);
-    expect(appts[0]).toMatchObject({ patientName: 'Juan Pérez', start: '2026-10-05T14:00:00.000Z', status: 'confirmed' });
+    expect(appts[0]).toMatchObject({
+      patientName: 'Juan Pérez',
+      start: '2026-10-05T14:00:00.000Z',
+      status: 'confirmed',
+      patientData: { nombre: 'Juan Pérez', cedula: 'V-12345678', seguro: 'Seguros Mercantil' },
+    });
+    expect(store.getPatient('whatsapp:584120000001')).toEqual({ nombre: 'Juan Pérez', cedula: 'V-12345678', seguro: 'Seguros Mercantil' });
 
     expect(store.usageSummary().calls).toBe(1);
     expect(store.usageSummary().costUsd).toBeGreaterThan(0);
@@ -36,7 +42,7 @@ describe('ClinicAgent', () => {
 
   it('rejects a time the model invented and offers real alternatives', async () => {
     const model = scriptedModel([
-      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: '2026-10-05T10:15:00-04:00', nombrePaciente: 'Ana Gil' } },
+      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: '2026-10-05T10:15:00-04:00', datosPaciente: { nombre: 'Ana Gil', cedula: '9876543' } } },
       { text: 'Ese horario no está disponible.' },
     ]);
     const { agent, store } = setup(model);
@@ -123,5 +129,34 @@ describe('ClinicAgent', () => {
     const prompt = model.doGenerateCalls[1]!.prompt;
     expect(prompt.filter((m: any) => m.role === 'user')).toHaveLength(2);
     expect(prompt[0]!.role).toBe('system');
+  });
+
+  it('refuses to book until required data is complete and valid', async () => {
+    const model = scriptedModel([
+      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: FIRST_SLOT, datosPaciente: { nombre: 'Rosa Díaz' } } },
+      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: FIRST_SLOT, datosPaciente: { cedula: 'abc', email: 'no-es-correo' } } },
+      { tool: 'agendar_cita', input: { servicio: CONSULTA, inicio: FIRST_SLOT, datosPaciente: { cedula: 'E 8.123.456' } } },
+      { text: 'Listo Rosa.' },
+    ]);
+    const { agent, store } = setup(model);
+    await agent.handle({ channel: 'web', userId: 'r1', text: 'cita a las 10' });
+
+    expect(lastToolOutput(model, 1)).toMatchObject({ ok: false, faltan: ['Cédula'] });
+    expect(lastToolOutput(model, 2)).toMatchObject({ ok: false, invalidos: { 'Cédula': expect.any(String), 'Correo electrónico': 'correo inválido' } });
+    // The name given in the first attempt was remembered, so the third call only needs the ID.
+    expect(lastToolOutput(model, 3)).toMatchObject({ ok: true });
+    expect(store.getPatient('web:r1')).toEqual({ nombre: 'Rosa Díaz', cedula: 'E-8123456' });
+  });
+
+  it('tells the model what it already knows about a returning patient', async () => {
+    const model = scriptedModel([{ text: 'Hola de nuevo, Juan.' }]);
+    const { agent, store } = setup(model);
+    store.getOrCreateConversation('web', 'p1');
+    store.savePatient('web:p1', { nombre: 'Juan Pérez', cedula: 'V-12345678' });
+    await agent.handle({ channel: 'web', userId: 'p1', text: 'quiero otra cita' });
+    const system = model.doGenerateCalls[0]!.prompt[0] as any;
+    expect(system.content).toContain('Datos ya registrados de este paciente');
+    expect(system.content).toContain('V-12345678');
+    expect(system.content).toContain('Cédula [clave: cedula] (obligatorio)');
   });
 });

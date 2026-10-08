@@ -12,6 +12,7 @@
     "chat": "tsx src/cli/chat.ts",
     "models": "tsx src/cli/models.ts",
     "costs": "tsx src/cli/costs.ts",
+    "export": "tsx src/cli/export.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

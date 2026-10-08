@@ -2,9 +2,12 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { Agenda } from '../calendar/agenda.ts';
 import type { Clinic } from '../config/clinic.ts';
+import { mergePatientData } from '../patients/fields.ts';
+import type { Store } from '../store/db.ts';
 
 export interface ToolContext {
   agenda: Agenda;
+  store: Store;
   clinic: Clinic;
   conversationId: string;
   onHandoff: (reason: string) => Promise<void>;
@@ -16,7 +19,20 @@ function serviceList(clinic: Clinic): string[] {
 
 /** Tools are built per conversation so the model can only see and change this patient's appointments. */
 export function buildTools(ctx: ToolContext) {
-  const { agenda, clinic, conversationId } = ctx;
+  const { agenda, clinic, conversationId, store } = ctx;
+
+  // One optional string per configured field; required-ness is checked against what we already know.
+  const patientSchema = z.object(
+    Object.fromEntries(
+      clinic.datosPaciente.map((f) => [f.clave, z.string().optional().describe(f.etiqueta + (f.descripcion ? `. ${f.descripcion}` : ''))]),
+    ),
+  );
+
+  function collect(incoming: Record<string, string | undefined>) {
+    const r = mergePatientData(clinic, store.getPatient(conversationId), incoming);
+    if (Object.keys(r.invalid).length === 0) store.savePatient(conversationId, r.data);
+    return r;
+  }
 
   return {
     buscar_horarios: tool({
@@ -41,15 +57,37 @@ export function buildTools(ctx: ToolContext) {
       },
     }),
 
+    guardar_datos_paciente: tool({
+      description:
+        'Guarda o corrige datos del paciente (los de la lista DATOS DEL PACIENTE). Úsala cuando el paciente los dé o quiera corregirlos.',
+      inputSchema: z.object({ datosPaciente: patientSchema }),
+      execute: async ({ datosPaciente }) => {
+        const r = collect(datosPaciente);
+        if (Object.keys(r.invalid).length) return { ok: false, invalidos: r.invalid };
+        return { ok: true, faltanObligatorios: r.missing };
+      },
+    }),
+
     agendar_cita: tool({
-      description: 'Agenda una cita. Usa el valor "inicio" EXACTO devuelto por buscar_horarios.',
+      description:
+        'Agenda una cita. Usa el valor "inicio" EXACTO devuelto por buscar_horarios e incluye los datos del paciente que te haya dado.',
       inputSchema: z.object({
         servicio: z.string(),
         inicio: z.string().describe('Valor "inicio" devuelto por buscar_horarios'),
-        nombrePaciente: z.string().min(2).describe('Nombre y apellido del paciente'),
+        datosPaciente: patientSchema.describe('Datos del paciente según la lista DATOS DEL PACIENTE'),
       }),
-      execute: async ({ servicio, inicio, nombrePaciente }) => {
-        const r = await agenda.book({ conversationId, patientName: nombrePaciente, serviceName: servicio, startIso: inicio });
+      execute: async ({ servicio, inicio, datosPaciente }) => {
+        const p = collect(datosPaciente ?? {});
+        if (Object.keys(p.invalid).length || p.missing.length) {
+          return { ok: false, motivo: 'Faltan o son inválidos algunos datos del paciente', faltan: p.missing, invalidos: p.invalid };
+        }
+        const r = await agenda.book({
+          conversationId,
+          patientName: p.data.nombre!,
+          serviceName: servicio,
+          startIso: inicio,
+          patientData: p.data,
+        });
         if (!r.ok) {
           return { ok: false, motivo: r.reason, alternativas: r.alternatives?.map((s) => ({ inicio: s.iso, texto: s.label })) };
         }

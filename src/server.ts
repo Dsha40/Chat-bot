@@ -3,6 +3,7 @@ import type { ClinicAgent } from './agent/agent.ts';
 import type { Clinic } from './config/clinic.ts';
 import type { Env } from './config/env.ts';
 import { webChatPage } from './channels/web-page.ts';
+import { appointmentsCsv, patientsCsv } from './export/csv.ts';
 import { MessageBuffer, parseWebhook, verifySignature, type WaInbound, type WhatsAppClient } from './channels/whatsapp.ts';
 import type { Store } from './store/db.ts';
 
@@ -96,9 +97,20 @@ export function createApp(deps: AppDeps) {
   // --- Admin ---
   const admin = new Hono();
   admin.use(async (c, next) => {
-    if (!env.ADMIN_TOKEN || c.req.header('authorization') !== `Bearer ${env.ADMIN_TOKEN}`) return c.text('Unauthorized', 401);
+    // Header for scripts; ?token= so the clinic can download exports from a browser link.
+    const token = c.req.header('authorization')?.replace(/^Bearer /, '') ?? c.req.query('token');
+    if (!env.ADMIN_TOKEN || token !== env.ADMIN_TOKEN) return c.text('Unauthorized', 401);
     await next();
   });
+  const csvResponse = (body: string, name: string) =>
+    new Response(body, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${name}-${new Date().toISOString().slice(0, 10)}.csv"`,
+      },
+    });
+  admin.get('/export/citas.csv', () => csvResponse(appointmentsCsv(store, clinic), 'citas'));
+  admin.get('/export/pacientes.csv', () => csvResponse(patientsCsv(store, clinic), 'pacientes'));
   admin.get('/costs', (c) => c.json(store.usageSummary()));
   admin.post('/resume', async (c) => {
     const { conversationId } = (await c.req.json().catch(() => ({}))) as { conversationId?: string };

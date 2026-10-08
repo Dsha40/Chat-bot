@@ -15,7 +15,7 @@ Agentes de IA para **clínicas, consultorios médicos y odontológicos, centros 
 ## Estado actual (2026-10-01)
 
 - [x] **Fase 0 — Investigación y benchmark:** `docs/00-benchmark.md` y `docs/00-mercados.md`. Cerrada.
-- [x] **MVP propio (ruta C directa, por decisión del usuario):** bot de WhatsApp + chat web, Gemini, agenda interna o Google Calendar, recordatorios, guardarraíles y 39 pruebas. Ver `README.md`.
+- [x] **MVP propio (ruta C directa, por decisión del usuario):** bot de WhatsApp + chat web, Gemini, agenda interna o Google Calendar, recordatorios, guardarraíles, datos del paciente configurables con exportación a Excel y 59 pruebas. Ver `README.md`.
 - [ ] Probar con credenciales reales (Gemini, Meta, Google Calendar) y con los médicos piloto.
 - [ ] Panel web para editar `config/clinica.json`, ver conversaciones y reanudar el bot.
 - [ ] Fase 3 — Multi-tenant, más canales, white-label para agencias y facturación.
@@ -95,7 +95,7 @@ Detalle en `docs/00-mercados.md`.
 
 - **Nunca** dar diagnósticos, interpretar síntomas, recomendar medicamentos ni dosis.
 - **Detectar urgencias** (dolor torácico, dificultad para respirar, sangrado abundante, ideación suicida, etc.) y responder de inmediato con el número de emergencias del país (VE 911, CO 123, AR 107/911 según provincia, ES 112 ⚠️ confirmar por ciudad) más derivación a un humano.
-- **Minimización:** guardar solo nombre, teléfono, tipo de cita, fecha y profesional. Nada de síntomas, diagnósticos, imágenes ni documentos de identidad.
+- **Datos del paciente:** cada clínica define en `datosPaciente` qué pide el bot (nombre siempre; cédula, seguro, fecha de nacimiento, correo… si la clínica lo quiere; decisión del usuario 2026-10-08). Nunca síntomas, diagnósticos ni imágenes. Exportables a CSV para Excel (`npm run export` y `/admin/export/*.csv`).
 - **Transparencia:** el primer mensaje declara que es un asistente de IA (obligatorio en ES por el art. 50 del Reglamento de IA desde el 2-ago-2026) y enlaza la política de datos.
 - **Consentimiento:** pedirlo en el chat según el texto de cada país (`docs/00-mercados.md`) y guardar la prueba con fecha y hora.
 - **Retención:** 12 meses para conversaciones, con borrado a pedido. Datos alojados en la UE.

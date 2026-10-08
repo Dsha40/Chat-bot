@@ -37,6 +37,24 @@ const clinicSchema = z.object({
   formasDePago: z.array(z.string()).default([]),
   politicaCancelacion: z.string().optional(),
   faq: z.array(z.object({ pregunta: z.string(), respuesta: z.string() })).default([]),
+  /** Patient data the bot asks for when booking. "nombre" is always included. */
+  datosPaciente: z
+    .array(
+      z.object({
+        clave: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]*$/, 'clave: solo letras, números y _'),
+        etiqueta: z.string(),
+        tipo: z.enum(['texto', 'cedula', 'telefono', 'email', 'fecha', 'opcion']).default('texto'),
+        obligatorio: z.boolean().default(false),
+        opciones: z.array(z.string()).optional(),
+        descripcion: z.string().optional(),
+      }),
+    )
+    .default([])
+    .transform((fields) =>
+      fields.some((f) => f.clave === 'nombre')
+        ? fields
+        : [{ clave: 'nombre', etiqueta: 'Nombre y apellido', tipo: 'texto' as const, obligatorio: true }, ...fields],
+    ),
   anticipacionMinimaHoras: z.number().default(2),
   diasMaximosAgenda: z.number().int().positive().default(30),
   intervaloMin: z.number().int().positive().default(30),
@@ -44,6 +62,7 @@ const clinicSchema = z.object({
 
 export type Clinic = z.infer<typeof clinicSchema>;
 export type Service = Clinic['servicios'][number];
+export type PatientField = Clinic['datosPaciente'][number];
 
 export function parseClinic(data: unknown): Clinic {
   const parsed = clinicSchema.safeParse(data);

@@ -4,3 +4,4 @@ data/
 config/clinica.json
 config/*service-account*.json
 *.log
+exports/

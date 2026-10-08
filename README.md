@@ -45,6 +45,43 @@ Toda la información de la clínica vive en `config/clinica.json`:
 
 El bot **solo** responde con lo que está en ese archivo. Si algo no aparece, deriva a una persona.
 
+### Datos que el bot pide a cada paciente
+
+En `datosPaciente` defines qué datos pide el bot al agendar. Los pide en un solo mensaje, valida el formato y no se los vuelve a pedir a un paciente que regresa. Ejemplo:
+
+```json
+"datosPaciente": [
+  { "clave": "nombre", "etiqueta": "Nombre y apellido", "obligatorio": true },
+  { "clave": "cedula", "etiqueta": "Cédula", "tipo": "cedula", "obligatorio": true },
+  { "clave": "fechaNacimiento", "etiqueta": "Fecha de nacimiento", "tipo": "fecha" },
+  { "clave": "seguro", "etiqueta": "Seguro", "tipo": "opcion" },
+  { "clave": "email", "etiqueta": "Correo electrónico", "tipo": "email" }
+]
+```
+
+| Tipo | Qué valida |
+|---|---|
+| `texto` | Cualquier texto (es el tipo por defecto) |
+| `cedula` | V/E/J/P + números. "v12.345.678" se guarda como "V-12345678" |
+| `fecha` | Se guarda como dd/mm/aaaa |
+| `email` | Que sea un correo válido |
+| `telefono` | Solo dígitos |
+| `opcion` | Debe ser una de `opciones`. Para el campo `seguro`, si no pones opciones, usa los `segurosAceptados` + "Particular" |
+
+`nombre` siempre se pide aunque no lo pongas en la lista. El bot nunca pide síntomas ni diagnósticos.
+
+## Exportar pacientes y citas a Excel
+
+```bash
+npm run export          # crea exports/citas-FECHA.csv y exports/pacientes-FECHA.csv
+npm run export -- --coma   # si tu Excel usa "," como separador
+```
+
+Los archivos se abren con doble clic en Excel: acentos correctos, una columna por dato y teléfonos y cédulas como texto. En el servidor, con `ADMIN_TOKEN` configurado, la clínica puede descargarlos desde el navegador:
+
+- `https://TU-DOMINIO/admin/export/citas.csv?token=TU_ADMIN_TOKEN`
+- `https://TU-DOMINIO/admin/export/pacientes.csv?token=TU_ADMIN_TOKEN`
+
 ## 3. Conectar WhatsApp (API oficial de Meta)
 
 1. Crea una app de tipo "Business" en https://developers.facebook.com y añade el producto **WhatsApp**.
@@ -95,6 +132,7 @@ Ponle HTTPS con Caddy (`caddy reverse-proxy --from tu-dominio.com --to localhost
 | `npm run chat` | Hablar con el bot desde la terminal |
 | `npm run models` | Ver los modelos de Gemini disponibles con tu clave |
 | `npm run costs` | Costo de IA acumulado y por conversación |
+| `npm run export` | Exportar citas y pacientes a CSV para Excel |
 | `npm test` | Pruebas automáticas (no gastan dinero; usan un modelo simulado) |
 
 ## Qué está probado y qué no

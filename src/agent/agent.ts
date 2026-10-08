@@ -85,6 +85,7 @@ export class ClinicAgent {
 
     const tools = buildTools({
       agenda: this.deps.agenda,
+      store,
       clinic,
       conversationId: conv.id,
       onHandoff: (reason) => this.handoff(conv.id, msg.userId, reason),
@@ -100,7 +101,7 @@ export class ClinicAgent {
       try {
         const result = await generateText({
           model: attempt.model,
-          system: buildSystemPrompt(clinic, this.now()),
+          system: buildSystemPrompt(clinic, this.now(), store.getPatient(conv.id)),
           messages,
           tools,
           stopWhen: isStepCount(6),
