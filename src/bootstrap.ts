@@ -16,7 +16,7 @@ export function bootstrap() {
   const store = new Store(join(env.DATA_DIR, 'chatbot.db'));
   const calendar: CalendarProvider =
     env.GOOGLE_SERVICE_ACCOUNT_FILE && env.GOOGLE_CALENDAR_ID
-      ? new GoogleCalendar(env.GOOGLE_SERVICE_ACCOUNT_FILE, env.GOOGLE_CALENDAR_ID)
+      ? new GoogleCalendar(env.GOOGLE_SERVICE_ACCOUNT_FILE, env.GOOGLE_CALENDAR_ID, clinic.zonaHoraria)
       : new InternalCalendar();
   const agenda = new Agenda(store, clinic, calendar);
   const whatsapp =

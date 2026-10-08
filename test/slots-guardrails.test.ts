@@ -71,3 +71,30 @@ describe('findService', () => {
 
   it('returns undefined for unknown services', () => expect(findService(clinic, 'ortodoncia')).toBeUndefined());
 });
+
+import { eventsToBusy } from '../src/calendar/google.ts';
+
+describe('Google Calendar events → busy time', () => {
+  const zone = 'America/Caracas';
+  it('blocks timed events and all-day events, ignores cancelled and "free" timed events', () => {
+    const busy = eventsToBusy(
+      [
+        { summary: 'Cirugía', start: { dateTime: '2026-10-05T09:00:00-04:00' }, end: { dateTime: '2026-10-05T11:00:00-04:00' } },
+        { summary: 'Vacaciones', start: { date: '2026-10-12' }, end: { date: '2026-10-14' }, transparency: 'transparent' },
+        { summary: 'Cancelada', status: 'cancelled', start: { dateTime: '2026-10-06T09:00:00-04:00' }, end: { dateTime: '2026-10-06T10:00:00-04:00' } },
+        { summary: 'Recordatorio', transparency: 'transparent', start: { dateTime: '2026-10-07T09:00:00-04:00' }, end: { dateTime: '2026-10-07T09:30:00-04:00' } },
+      ],
+      zone,
+    );
+    expect(busy.map((b) => [b.start.toISOString(), b.end.toISOString()])).toEqual([
+      ['2026-10-05T13:00:00.000Z', '2026-10-05T15:00:00.000Z'],
+      ['2026-10-12T04:00:00.000Z', '2026-10-14T04:00:00.000Z'],
+    ]);
+  });
+
+  it('the bot never offers slots during an all-day vacation', () => {
+    const busy = eventsToBusy([{ start: { date: '2026-10-12' }, end: { date: '2026-10-13' } }], zone);
+    const slots = computeSlots({ clinic, service, now: NOW, busy, fromDate: '2026-10-12', limit: 1 });
+    expect(slots[0]!.iso).toBe('2026-10-13T08:00:00-04:00');
+  });
+});

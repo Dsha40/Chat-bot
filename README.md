@@ -101,15 +101,59 @@ Los archivos se abren con doble clic en Excel: acentos correctos, una columna po
 
 **Para probar sin dominio** puedes exponer tu PC con `cloudflared tunnel --url http://localhost:3000` y usar la URL que te da.
 
-## 4. Google Calendar (opcional)
+## 4. Agenda: ¿dónde revisa el bot los horarios libres?
 
-Sin configurar nada, el bot usa su **agenda interna**. Para usar la agenda de Google de la clínica:
+Antes de ofrecer un horario, el bot revisa siempre tres cosas:
+- el horario de atención de `config/clinica.json`;
+- las citas ya agendadas;
+- la anticipación mínima.
 
-1. En https://console.cloud.google.com crea un proyecto, activa la **Google Calendar API** y crea una **cuenta de servicio** con su clave JSON.
-2. En Google Calendar, comparte el calendario de la clínica con el correo de esa cuenta de servicio, con el permiso "Hacer cambios en eventos".
-3. Pon la ruta del JSON en `GOOGLE_SERVICE_ACCOUNT_FILE` y el ID del calendario (Configuración del calendario → "ID del calendario") en `GOOGLE_CALENDAR_ID`.
+Nunca ofrece un horario ocupado ni permite dos citas a la misma hora. Hay dos formas de llevar la agenda:
 
-El bot respetará los eventos que ya existan en ese calendario y creará uno por cada cita.
+| | Agenda interna (por defecto) | Google Calendar (recomendado) |
+|---|---|---|
+| Dónde quedan las citas | En la base de datos del bot (`data/chatbot.db`) | En el Google Calendar del médico, y también en la base de datos |
+| Cómo las ve el médico | `npm run export` → Excel | En su celular, en la app de Google Calendar |
+| Bloquear un día (vacaciones, cirugía) | Cambiando el horario en `clinica.json` | Creando un evento en su calendario: el bot ya no ofrece esa hora |
+| Configuración | Ninguna | 10 minutos, una sola vez |
+
+**Si el consultorio usa papel o cuaderno**, lo más práctico es usar Google Calendar: el médico ve las citas en el celular y bloquea horas con un toque.
+
+### Conectar Google Calendar paso a paso
+
+1. **Crea un calendario para las citas.** En https://calendar.google.com (con la cuenta del médico o de la clínica), en "Otros calendarios" pulsa **+ → Crear calendario**, por ejemplo "Citas consultorio". Uno separado evita que el bot vea cumpleaños o eventos personales.
+2. **Crea la cuenta de servicio.** Es el "usuario robot" del bot.
+   1. Entra a https://console.cloud.google.com y crea un proyecto (por ejemplo "asistente-clinica").
+   2. Menú → **APIs y servicios → Biblioteca** → busca **Google Calendar API** → **Habilitar**.
+   3. Menú → **IAM y administración → Cuentas de servicio → Crear cuenta de servicio**. Ponle un nombre y pulsa Listo; no hace falta darle roles.
+   4. Entra a la cuenta creada → pestaña **Claves → Agregar clave → Crear clave nueva → JSON**. Se descarga un archivo `.json`.
+   5. Copia el correo de la cuenta de servicio (termina en `@...iam.gserviceaccount.com`).
+3. **Comparte el calendario con el robot.** En Google Calendar, en el calendario "Citas consultorio" → **⋮ → Configuración y uso compartido**:
+   1. En **Compartir con determinadas personas**, agrega el correo del paso 2.5 con el permiso **"Hacer cambios en eventos"**.
+   2. En esa misma página, baja hasta **Integrar el calendario** y copia el **ID del calendario** (algo como `abc123@group.calendar.google.com`).
+4. **Configura el bot.**
+   1. Sube el `.json` a la carpeta `config/` con el nombre `google-service-account.json`. En Codespaces, arrástralo al panel de archivos. Ese nombre está excluido de git, así que no se sube a GitHub.
+   2. En `.env` pon:
+      ```
+      GOOGLE_SERVICE_ACCOUNT_FILE=./config/google-service-account.json
+      GOOGLE_CALENDAR_ID=abc123@group.calendar.google.com
+      ```
+5. **Comprueba la conexión:**
+   ```bash
+   npm run calendario                        # lee el calendario y muestra los horarios libres
+   npm run calendario -- --probar-escritura  # además crea y borra un evento de prueba
+   ```
+   Si algo falta, el comando te dice qué es en español: calendario no compartido, API sin habilitar o archivo no encontrado.
+
+**Cómo usa el calendario el bot:**
+- Cada cita que agenda aparece como "Servicio — Nombre del paciente".
+- Si el paciente cancela o reagenda por el chat, el evento se borra o se mueve.
+- Cualquier evento que el médico cree en ese calendario bloquea esa hora, incluidos los de día completo (vacaciones, congresos).
+- Si quieres crear un evento que no bloquee la agenda (una nota, por ejemplo), márcalo como **"Disponible"** en Google Calendar.
+
+### ¿Y si la clínica usa otro sistema (Doctoralia, un software médico)?
+
+Muchos sistemas pueden sincronizarse con Google Calendar; en ese caso basta con conectar ese calendario. Si no, se puede escribir un adaptador nuevo en `src/calendar/` que implemente la interfaz `CalendarProvider` (`busy`, `createEvent`, `deleteEvent`) sin tocar el resto del bot.
 
 ## 5. Publicarlo en un servidor (≈ USD 6–10/mes)
 
@@ -133,6 +177,7 @@ Ponle HTTPS con Caddy (`caddy reverse-proxy --from tu-dominio.com --to localhost
 | `npm run models` | Ver los modelos de Gemini disponibles con tu clave |
 | `npm run costs` | Costo de IA acumulado y por conversación |
 | `npm run export` | Exportar citas y pacientes a CSV para Excel |
+| `npm run calendario` | Verificar la conexión con Google Calendar y ver los horarios libres |
 | `npm test` | Pruebas automáticas (no gastan dinero; usan un modelo simulado) |
 
 ## Qué está probado y qué no
