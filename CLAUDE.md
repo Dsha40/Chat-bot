@@ -16,7 +16,8 @@ Agentes de IA para **clínicas, consultorios médicos y odontológicos, centros 
 
 - [x] **Fase 0 — Investigación y benchmark:** `docs/00-benchmark.md` y `docs/00-mercados.md`. Cerrada.
 - [x] **MVP propio (ruta C directa, por decisión del usuario):** bot de WhatsApp + chat web, Gemini, agenda interna o Google Calendar, recordatorios, guardarraíles, datos del paciente configurables con exportación a Excel, tickets de cita, verificadores `npm run calendario` y `npm run whatsapp`, y 69 pruebas. Ver `README.md`.
-- [ ] Probar con credenciales reales (Gemini, Meta, Google Calendar) y con los médicos piloto.
+- [x] Probado con credenciales reales (2026-10-09): Gemini, Google Calendar y WhatsApp con el número de prueba de Meta, desde Codespaces.
+- [ ] Token permanente de Meta, número real de la clínica, servidor (VPS) y pilotos con médicos.
 - [ ] Panel web para editar `config/clinica.json`, ver conversaciones y reanudar el bot.
 - [ ] Fase 3 — Multi-tenant, más canales, white-label para agencias y facturación.
 - [ ] Fase 4 — Voz, orquestación, evaluaciones y ruteo avanzado de modelos.
