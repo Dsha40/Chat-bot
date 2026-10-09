@@ -222,6 +222,8 @@ docker run -d --name clinic-bot --restart unless-stopped -p 3000:3000 \
 
 Ponle HTTPS con Caddy (`caddy reverse-proxy --from tu-dominio.com --to localhost:3000`) o usa Coolify.
 
+> 📋 **Guía completa paso a paso:** [`docs/guia-puesta-en-marcha.md`](docs/guia-puesta-en-marcha.md)
+
 ## Comandos
 
 | Comando | Para qué |
