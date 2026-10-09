@@ -137,6 +137,42 @@ export class WhatsAppClient {
     this.fetch = cfg.fetch ?? fetch;
   }
 
+  /** Recipient formats that worked after a 131030 retry (e.g. Argentine 549… → 54…15…). */
+  private aliases = new Map<string, string>();
+
+  /**
+   * Meta quirk (mostly with the free test number): Argentine and Mexican mobiles arrive as 549…/521…
+   * but the allowed-recipient list stores them as 54+area+15+number / 52+number. Alternatives to try.
+   */
+  static recipientVariants(to: string): string[] {
+    const out: string[] = [];
+    const ar = to.match(/^549(\d{10})$/);
+    if (ar) for (const areaLen of [3, 2, 4]) out.push(`54${ar[1]!.slice(0, areaLen)}15${ar[1]!.slice(areaLen)}`);
+    const mx = to.match(/^521(\d{10})$/);
+    if (mx) out.push(`52${mx[1]}`);
+    return out;
+  }
+
+  /** Sends to a recipient, retrying alternative number formats when Meta answers 131030. */
+  private async postTo(to: string, body: Record<string, unknown>): Promise<void> {
+    const first = this.aliases.get(to) ?? to;
+    try {
+      return await this.post({ to: first, ...body });
+    } catch (err) {
+      if (!(err instanceof WhatsAppApiError) || err.code !== 131030) throw err;
+      for (const alt of WhatsAppClient.recipientVariants(to).filter((v) => v !== first)) {
+        try {
+          await this.post({ to: alt, ...body });
+          this.aliases.set(to, alt);
+          return;
+        } catch (e) {
+          if (!(e instanceof WhatsAppApiError) || e.code !== 131030) throw e;
+        }
+      }
+      throw err;
+    }
+  }
+
   private async post(body: unknown): Promise<void> {
     const res = await this.fetch(`${this.base}/${this.cfg.phoneNumberId}/messages`, {
       method: 'POST',
@@ -166,12 +202,11 @@ export class WhatsAppClient {
   }
 
   sendText(to: string, text: string): Promise<void> {
-    return this.post({ to, type: 'text', text: { body: text.slice(0, 4096), preview_url: false } });
+    return this.postTo(to, { type: 'text', text: { body: text.slice(0, 4096), preview_url: false } });
   }
 
   sendTemplate(to: string, name: string, lang: string, params: string[]): Promise<void> {
-    return this.post({
-      to,
+    return this.postTo(to, {
       type: 'template',
       template: {
         name,

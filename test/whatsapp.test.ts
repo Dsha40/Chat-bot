@@ -177,3 +177,47 @@ describe('WhatsApp API errors', () => {
     });
   });
 });
+
+describe('Argentine/Mexican number format quirk', () => {
+  it('lists alternative formats', () => {
+    expect(WhatsAppClient.recipientVariants('5493517554979')).toEqual(['54351157554979', '54351517554979', '54351715554979']);
+    expect(WhatsAppClient.recipientVariants('5215512345678')).toEqual(['525512345678']);
+    expect(WhatsAppClient.recipientVariants('584121234567')).toEqual([]);
+  });
+
+  it('retries with the 54+area+15 format on 131030 and remembers it', async () => {
+    const tried: string[] = [];
+    const wa = new WhatsAppClient({
+      token: 'T',
+      phoneNumberId: 'P',
+      apiVersion: 'v23.0',
+      fetch: (async (_u: string, init?: RequestInit) => {
+        const to = JSON.parse(String(init?.body)).to as string;
+        tried.push(to);
+        return to === '54351157554979'
+          ? Response.json({})
+          : Response.json({ error: { message: 'not in allowed list', code: 131030 } }, { status: 400 });
+      }) as typeof fetch,
+    });
+    await wa.sendText('5493517554979', 'hola');
+    expect(tried).toEqual(['5493517554979', '54351157554979']);
+    await wa.sendText('5493517554979', 'otra vez');
+    expect(tried.at(-1)).toBe('54351157554979');
+    expect(tried).toHaveLength(3);
+  });
+
+  it('does not retry for other numbers or other errors', async () => {
+    let calls = 0;
+    const wa = new WhatsAppClient({
+      token: 'T',
+      phoneNumberId: 'P',
+      apiVersion: 'v23.0',
+      fetch: (async () => {
+        calls++;
+        return Response.json({ error: { message: 'x', code: 131030 } }, { status: 400 });
+      }) as typeof fetch,
+    });
+    await expect(wa.sendText('584121234567', 'hola')).rejects.toBeInstanceOf(WhatsAppApiError);
+    expect(calls).toBe(1);
+  });
+});
