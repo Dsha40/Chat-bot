@@ -53,7 +53,8 @@ export class ClinicAgent {
     const history = store.recentMessages(conv.id, this.deps.historyLimit ?? 16);
     store.addMessage(conv.id, 'user', userText);
 
-    // A person from the clinic is handling this conversation: the bot stays quiet.
+    // The clinic paused the bot (globally or for this patient): stay quiet.
+    if (store.isBotPaused()) return [];
     if (conv.handoffUntil && new Date(conv.handoffUntil) > this.now()) return [];
 
     const replies: string[] = [];

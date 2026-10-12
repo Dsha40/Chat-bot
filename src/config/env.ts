@@ -25,7 +25,10 @@ const schema = z.object({
   WHATSAPP_API_VERSION: z.string().default('v23.0'),
   WHATSAPP_REMINDER_TEMPLATE: optional,
   WHATSAPP_TEMPLATE_LANG: z.string().default('es'),
+  /** One or more staff numbers, comma-separated (e.g. 58412XXXXXXX,58414YYYYYYY). They receive alerts and can send #commands. */
   STAFF_WHATSAPP: optional,
+  /** Hours the bot stays quiet with a patient after staff writes to them or after a handoff. */
+  HANDOFF_HOURS: z.coerce.number().default(12),
   DEBOUNCE_MS: z.coerce.number().default(2500),
 
   GOOGLE_SERVICE_ACCOUNT_FILE: optional,

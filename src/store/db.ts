@@ -77,6 +77,7 @@ export class Store {
         cost_usd REAL NOT NULL, created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS processed_messages (id TEXT PRIMARY KEY, created_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS patients (
         conversation_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL
       );
@@ -118,6 +119,24 @@ export class Store {
     this.db
       .prepare('UPDATE conversations SET handoff_until = ? WHERE id = ?')
       .run(until ? until.toISOString() : null, conversationId);
+  }
+
+  /** Global switch: when paused the bot stays silent with everyone (messages are still stored). */
+  isBotPaused(): boolean {
+    const r = this.db.prepare(`SELECT value FROM settings WHERE key = 'bot_paused'`).get() as { value: string } | undefined;
+    return r?.value === '1';
+  }
+
+  setBotPaused(paused: boolean): void {
+    this.db
+      .prepare(`INSERT INTO settings (key, value) VALUES ('bot_paused', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+      .run(paused ? '1' : '0');
+  }
+
+  /** Conversations where a person is currently in charge (bot paused for that patient). */
+  pausedConversations(nowIso: string): Conversation[] {
+    const rows = this.db.prepare('SELECT id FROM conversations WHERE handoff_until > ? ORDER BY handoff_until').all(nowIso) as { id: string }[];
+    return rows.map((r) => this.getConversation(r.id)!);
   }
 
   addMessage(conversationId: string, role: Role, content: string): void {

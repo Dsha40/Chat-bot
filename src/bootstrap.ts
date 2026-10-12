@@ -3,6 +3,7 @@ import { ClinicAgent } from './agent/agent.ts';
 import { Agenda } from './calendar/agenda.ts';
 import { GoogleCalendar } from './calendar/google.ts';
 import { InternalCalendar, type CalendarProvider } from './calendar/types.ts';
+import { parseStaffNumbers } from './channels/staff-commands.ts';
 import { WhatsAppClient } from './channels/whatsapp.ts';
 import { loadClinic } from './config/clinic.ts';
 import { loadEnv } from './config/env.ts';
@@ -29,7 +30,12 @@ export function bootstrap() {
     agenda,
     models: createModels(env),
     notifyStaff:
-      whatsapp && env.STAFF_WHATSAPP ? (text) => whatsapp.sendText(env.STAFF_WHATSAPP!, text) : async (text) => console.log(`[staff] ${text}`),
+      whatsapp && env.STAFF_WHATSAPP
+        ? async (text) => {
+            for (const n of parseStaffNumbers(env.STAFF_WHATSAPP)) await whatsapp.sendText(n, text);
+          }
+        : async (text) => console.log(`[staff] ${text}`),
+    handoffHours: env.HANDOFF_HOURS,
   });
   return { env, clinic, store, calendar, agenda, whatsapp, agent };
 }

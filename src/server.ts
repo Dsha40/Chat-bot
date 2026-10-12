@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { ClinicAgent } from './agent/agent.ts';
 import type { Clinic } from './config/clinic.ts';
 import type { Env } from './config/env.ts';
+import { handleStaffCommand, parseStaffNumbers } from './channels/staff-commands.ts';
 import { webChatPage } from './channels/web-page.ts';
 import { appointmentsCsv, patientsCsv } from './export/csv.ts';
 import {
@@ -76,11 +77,24 @@ export function createApp(deps: AppDeps) {
 
     const { messages, echoes } = parseWebhook(JSON.parse(raw));
     // Staff answered from the WhatsApp Business app: pause the bot for that patient.
-    for (const e of echoes) store.setHandoff(`whatsapp:${e.to}`, new Date(Date.now() + 12 * 3_600_000));
+    for (const e of echoes) {
+      store.getOrCreateConversation('whatsapp', e.to);
+      store.setHandoff(`whatsapp:${e.to}`, new Date(Date.now() + env.HANDOFF_HOURS * 3_600_000));
+      console.log(`[whatsapp] ✋ el personal le escribió a ${e.to} desde el celular: bot en pausa ${env.HANDOFF_HOURS} h con ese paciente`);
+    }
+    const staff = parseStaffNumbers(env.STAFF_WHATSAPP);
 
     for (const m of messages) {
       if (!store.markProcessed(m.id)) continue; // duplicate delivery
       whatsapp.markRead(m.id).catch(() => undefined);
+      if (staff.includes(m.from) && m.kind === 'text') {
+        const reply = handleStaffCommand(m.text, store, new Date(), clinic.zonaHoraria);
+        if (reply) {
+          console.log(`[whatsapp] ⚙ comando del personal (${m.from}): ${m.text}`);
+          await whatsapp.sendText(m.from, reply).catch((err) => console.error(`[whatsapp] ✘ ${describeWhatsAppError(err)}`));
+          continue;
+        }
+      }
       if (m.kind === 'unsupported') {
         await whatsapp
           .sendText(m.from, 'Por ahora solo puedo leer mensajes de texto y notas de voz 🙏. ¿Me lo escribes, por favor?')

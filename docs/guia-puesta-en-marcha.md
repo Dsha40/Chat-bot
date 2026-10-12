@@ -13,6 +13,7 @@ Marca cada casilla cuando la termines.
 | 6 | Servidor propio encendido 24/7 | 45 min | USD 6–10/mes |
 | 7 | Número real de la clínica | 30 min | Meta cobra por mensaje |
 | 8 | Recordatorios y avisos al personal (opcional) | 20 min | — |
+| 9 | Celular + bot en el mismo número y apagar el bot | 15 min | — |
 | — | Uso diario y solución de problemas | — | — |
 
 ---
@@ -308,6 +309,50 @@ Las citas y los pacientes están en la carpeta `data/`, que no se borra al actua
 - [ ] **8.3** **Descargas a Excel.** Pon una contraseña larga en `ADMIN_TOKEN` del `.env`. La clínica podrá descargar sus datos desde el navegador:
   - `https://TU-DOMINIO/admin/export/citas.csv?token=TU_ADMIN_TOKEN`
   - `https://TU-DOMINIO/admin/export/pacientes.csv?token=TU_ADMIN_TOKEN`
+
+---
+
+## Parte 9 — Usar el celular y el bot a la vez, y apagar el bot
+
+### 9.1 El mismo número en el celular y en el bot (coexistencia)
+
+Meta permite que la clínica siga usando la **app WhatsApp Business** en su celular y que el bot responda por la API **con el mismo número**. El personal ve todas las conversaciones en el celular y puede escribir cuando quiera.
+
+- **Cómo se activa:** al agregar el número en Meta, elige la opción para **conectar un número existente de la app WhatsApp Business**, no la de registrar un número nuevo. Después escanea un código QR desde la app: **Configuración → Dispositivos vinculados**. La app debe estar actualizada.
+- **Si Meta no te muestra esa opción** en tu panel de desarrollador: hoy se ofrece sobre todo a través del *Registro integrado* (*Embedded Signup*) de proveedores autorizados (*Tech Providers* o BSP, como 360dialog). En ese caso hay dos caminos:
+  - registrarte tú como Tech Provider, que exige verificar el negocio;
+  - usar un BSP que ofrezca coexistencia.
+- **Limitaciones:**
+  - los grupos y las llamadas no pasan por el bot;
+  - se puede importar hasta 6 meses de historial;
+  - los dispositivos vinculados (WhatsApp Web) se desconectan una vez y hay que volver a vincularlos.
+- **⚠️ No registres un número que ya usas en el celular con el flujo normal de "Agregar número":** eso lo saca de la app.
+
+Con la coexistencia activa, suscríbete en el webhook al campo **`smb_message_echoes`**. Así, **cuando alguien de la clínica le escribe a un paciente desde el celular, el bot se calla con ese paciente** durante `HANDOFF_HOURS` horas (12 por defecto). El paciente no nota nada.
+
+### 9.2 Apagar y prender el bot desde WhatsApp
+
+Pon los números del personal en `.env`, separados por comas:
+```
+STAFF_WHATSAPP=58412XXXXXXX,58414YYYYYYY
+```
+Desde esos números, **escríbanle al número del bot** estos comandos. Los pacientes no los ven:
+
+| Comando | Qué hace |
+|---|---|
+| `#pausa` | El bot deja de responder a **todos**. Los mensajes se siguen guardando |
+| `#activa` | El bot vuelve a responder |
+| `#pausa 58412XXXXXXX` | Calla el bot **solo con ese paciente** (30 días o hasta reactivarlo) |
+| `#activa 58412XXXXXXX` | Reactiva el bot con ese paciente |
+| `#estado` | Muestra si el bot está pausado y con qué pacientes |
+| `#ayuda` | Lista de comandos |
+
+El bot también se calla solo con un paciente cuando:
+- detecta una urgencia;
+- el paciente pide hablar con una persona;
+- no sabe responder algo y deriva.
+
+En esos casos avisa a los números de `STAFF_WHATSAPP`.
 
 ---
 

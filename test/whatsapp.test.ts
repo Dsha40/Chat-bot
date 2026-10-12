@@ -221,3 +221,60 @@ describe('Argentine/Mexican number format quirk', () => {
     expect(calls).toBe(1);
   });
 });
+
+import { handleStaffCommand } from '../src/channels/staff-commands.ts';
+import { Store } from '../src/store/db.ts';
+
+describe('staff control of the bot', () => {
+  it('pauses and resumes globally and per patient', async () => {
+    const store = new Store(':memory:');
+    expect(handleStaffCommand('hola', store)).toBeNull();
+    expect(handleStaffCommand('#pausa', store)).toContain('TODOS');
+    expect(store.isBotPaused()).toBe(true);
+    expect(handleStaffCommand('#estado', store)).toContain('PAUSADO');
+    expect(handleStaffCommand('#Activa', store)).toContain('activo');
+    expect(store.isBotPaused()).toBe(false);
+
+    expect(handleStaffCommand('#pausa +58 412-111-2233', store)).toContain('584121112233');
+    expect(store.getConversation('whatsapp:584121112233')!.handoffUntil).not.toBeNull();
+    expect(handleStaffCommand('#estado', store)).toContain('584121112233');
+    handleStaffCommand('#activa 584121112233', store);
+    expect(store.getConversation('whatsapp:584121112233')!.handoffUntil).toBeNull();
+    expect(handleStaffCommand('#loquesea', store)).toContain('Comandos del asistente');
+  });
+
+  it('the global pause silences the agent', async () => {
+    const { agent, store } = setup(scriptedModel([{ text: 'no debería responder' }]));
+    store.setBotPaused(true);
+    expect(await agent.handle({ channel: 'whatsapp', userId: '58999', text: 'hola' })).toEqual([]);
+    expect(store.recentMessages('whatsapp:58999', 5)).toHaveLength(1); // still stored
+  });
+
+  it('staff #commands over WhatsApp never reach the agent and patients are paused by echoes', async () => {
+    const sent: any[] = [];
+    const fakeFetch = (async (_u: string, init?: RequestInit) => {
+      sent.push(JSON.parse(String(init?.body)));
+      return Response.json({});
+    }) as typeof fetch;
+    const model = scriptedModel([{ text: 'respuesta del bot' }]);
+    const { agent, store } = setup(model);
+    const env = loadEnv({ WHATSAPP_APP_SECRET: SECRET, DEBOUNCE_MS: '10', STAFF_WHATSAPP: '58414000111, 58424000222', HANDOFF_HOURS: '6' });
+    const whatsapp = new WhatsAppClient({ token: 'T', phoneNumberId: 'P', apiVersion: 'v23.0', fetch: fakeFetch });
+    const { app, buffer } = createApp({ env, clinic, store, agent, whatsapp });
+    const post = (payload: unknown) => {
+      const body = JSON.stringify(payload);
+      return app.request('/webhook/whatsapp', { method: 'POST', body, headers: { 'x-hub-signature-256': sign(body) } });
+    };
+
+    await post(webhook([{ id: 's1', from: '58424000222', type: 'text', text: { body: '#pausa' } }], []));
+    await buffer.drain();
+    expect(model.doGenerateCalls).toHaveLength(0);
+    expect(store.isBotPaused()).toBe(true);
+    expect(sent.find((b) => b.type === 'text').text.body).toContain('pausado');
+
+    await post({ entry: [{ changes: [{ field: 'smb_message_echoes', value: { message_echoes: [{ from: 'BIZ', to: '58412777888' }] } }] }] });
+    const until = new Date(store.getConversation('whatsapp:58412777888')!.handoffUntil!).getTime();
+    expect(until - Date.now()).toBeGreaterThan(5.9 * 3_600_000);
+    expect(until - Date.now()).toBeLessThan(6.1 * 3_600_000);
+  });
+});

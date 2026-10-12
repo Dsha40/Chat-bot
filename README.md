@@ -235,6 +235,7 @@ Ponle HTTPS con Caddy (`caddy reverse-proxy --from tu-dominio.com --to localhost
 | `npm run costs` | Costo de IA acumulado y por conversación |
 | `npm run export` | Exportar citas y pacientes a CSV para Excel |
 | `npm run calendario` | Verificar la conexión con Google Calendar y ver los horarios libres |
+| `#pausa`, `#activa`, `#estado` (por WhatsApp, desde `STAFF_WHATSAPP`) | Apagar o prender el bot para todos o para un paciente (ver guía, parte 9) |
 | `npm run whatsapp` | Verificar el token y el número de WhatsApp (`-- --enviar NUM`, `-- --suscribir WABA_ID`) |
 | `npm test` | Pruebas automáticas (no gastan dinero; usan un modelo simulado) |
 
